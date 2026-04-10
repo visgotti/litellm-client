@@ -1,0 +1,16 @@
+model_list:
+  - model_name: "fake-openai-chat"
+    litellm_params:
+      model: "openai/fake"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+
+  - model_name: "fake-openai-embedding"
+    litellm_params:
+      model: "openai/fake"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+
+general_settings:
+  master_key: "sk-e2e-test-master-key"
+  database_url: null

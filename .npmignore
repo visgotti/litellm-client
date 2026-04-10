@@ -1,0 +1,10 @@
+src/
+tests/
+coverage/
+jest.config.ts
+jest.e2e.config.ts
+tsconfig.json
+tsconfig.build.json
+.github/
+.gitignore
+.env
