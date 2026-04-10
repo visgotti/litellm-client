@@ -9,13 +9,14 @@ import type {
   Usage,
   FunctionDefinition,
 } from './common';
+import type { ChatModel } from './models-enum';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Chat Completion – Request
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ChatCompletionCreateParamsBase {
-  model: string;
+  model: ChatModel;
   messages: Message[];
   temperature?: number | null;
   top_p?: number | null;

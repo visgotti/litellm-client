@@ -103,3 +103,30 @@ export type {
   BudgetDeleteParams,
   BudgetInfoParams,
 } from './budgets';
+
+// Model string enums & provider types
+export type {
+  LiteLLMProvider,
+  ChatModel,
+  EmbeddingModelId,
+  EmbeddingModel,
+  OpenAIModel,
+  AnthropicModel,
+  GeminiModel,
+  VertexAIModel,
+  MistralModel,
+  GroqModel,
+  DeepseekModel,
+  CohereModel,
+  BedrockModel,
+  AzureModel,
+  TogetherAIModel,
+  FireworksAIModel,
+  PerplexityModel,
+  OpenRouterModel,
+  OllamaModel,
+  ReplicateModel,
+  HuggingFaceModel,
+  DatabricksModel,
+  SagemakerModel,
+} from './models-enum';

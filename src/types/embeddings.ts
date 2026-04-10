@@ -1,11 +1,12 @@
 import type { Usage } from './common';
+import type { EmbeddingModelId } from './models-enum';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Embeddings – Request
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EmbeddingCreateParams {
-  model: string;
+  model: EmbeddingModelId;
   input: string | string[];
   encoding_format?: 'float' | 'base64';
   user?: string;
