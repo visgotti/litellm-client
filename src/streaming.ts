@@ -1,18 +1,16 @@
-import type { ChatCompletionChunk } from './types/chat';
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Server-Sent Events (SSE) stream parser for OpenAI-compatible streaming
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Parse an SSE response body into an async iterable of typed chunks.
+ * Parse an SSE response body into an async iterable of typed events.
  * Handles the OpenAI streaming format:
  *   data: {json}
  *   data: [DONE]
  */
-export async function* parseSSEStream(
+export async function* parseSSEStream<T = unknown>(
   body: ReadableStream<Uint8Array>,
-): AsyncIterable<ChatCompletionChunk> {
+): AsyncIterable<T> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -24,7 +22,6 @@ export async function* parseSSEStream(
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      // Keep the last (possibly incomplete) line in the buffer
       buffer = lines.pop() ?? '';
 
       for (const line of lines) {
@@ -37,22 +34,19 @@ export async function* parseSSEStream(
           if (data === '[DONE]') return;
 
           try {
-            const parsed: ChatCompletionChunk = JSON.parse(data);
-            yield parsed;
+            yield JSON.parse(data) as T;
           } catch {
-            // Skip malformed JSON lines
+            // Skip malformed JSON
           }
         }
       }
     }
 
-    // Process any remaining data in the buffer
     if (buffer.trim().startsWith('data: ')) {
       const data = buffer.trim().slice(6);
       if (data !== '[DONE]') {
         try {
-          const parsed: ChatCompletionChunk = JSON.parse(data);
-          yield parsed;
+          yield JSON.parse(data) as T;
         } catch {
           // Skip malformed JSON
         }
@@ -81,5 +75,12 @@ export class Stream<T> implements AsyncIterable<T> {
 
   [Symbol.asyncIterator](): AsyncIterator<T> {
     return this.iterator[Symbol.asyncIterator]();
+  }
+
+  /** Drain the stream into an array. */
+  async toArray(): Promise<T[]> {
+    const out: T[] = [];
+    for await (const item of this) out.push(item);
+    return out;
   }
 }

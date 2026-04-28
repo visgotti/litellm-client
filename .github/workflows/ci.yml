@@ -44,8 +44,8 @@ jobs:
           name: coverage-unit
           path: coverage/
 
-  # ───────────────────── e2e tests (docker) ────────────────────
-  e2e-tests:
+  # ───────────────────── build ──────────────────────────────────
+  build:
     runs-on: ubuntu-latest
     needs: [lint, unit-tests]
     steps:
@@ -55,8 +55,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Pull LiteLLM proxy image
-        run: docker pull ghcr.io/berriai/litellm:main-latest
-      - name: Run e2e tests
-        run: npm run test:e2e
-        timeout-minutes: 10
+      - run: npm run build
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+# Note: end-to-end tests against a real LiteLLM proxy + live providers run
+# in the separate `live-e2e.yml` workflow (post-merge to main + manual dispatch).
+# That separation keeps PR feedback fast and prevents fork PRs from needing
+# access to provider secrets.

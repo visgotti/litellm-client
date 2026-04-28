@@ -8,6 +8,7 @@ import type {
   ResponseFormat,
   Usage,
   FunctionDefinition,
+  Role,
 } from './common';
 import type { ChatModel } from './models-enum';
 
@@ -22,15 +23,24 @@ export interface ChatCompletionCreateParamsBase {
   top_p?: number | null;
   n?: number | null;
   max_tokens?: number | null;
+  /** New name preferred by OpenAI for o-series & GPT-5+ */
+  max_completion_tokens?: number | null;
   stop?: string | string[] | null;
   presence_penalty?: number | null;
   frequency_penalty?: number | null;
   logit_bias?: Record<string, number> | null;
+  logprobs?: boolean | null;
+  top_logprobs?: number | null;
   user?: string;
   response_format?: ResponseFormat;
   seed?: number | null;
   tools?: ToolDefinition[];
   tool_choice?: ToolChoice;
+  parallel_tool_calls?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high' | 'minimal';
+  modalities?: Array<'text' | 'audio'>;
+  audio?: { voice: string; format: 'wav' | 'mp3' | 'flac' | 'opus' | 'pcm16' };
+  prediction?: { type: 'content'; content: string };
   /** @deprecated Use tools/tool_choice */
   functions?: FunctionDefinition[];
   /** @deprecated Use tools/tool_choice */
@@ -39,6 +49,14 @@ export interface ChatCompletionCreateParamsBase {
   extra_headers?: Record<string, string>;
   /** Arbitrary metadata passed to the proxy for logging/tracking */
   metadata?: Record<string, unknown>;
+  /** LiteLLM cost tracking tags */
+  tags?: string[];
+  /** Optional list of fallback model names */
+  fallbacks?: string[];
+  /** Optional API base override sent to the proxy */
+  api_base?: string;
+  /** Optional API key override sent to the proxy */
+  api_key?: string;
 }
 
 export interface ChatCompletionCreateParamsNonStreaming
@@ -46,8 +64,7 @@ export interface ChatCompletionCreateParamsNonStreaming
   stream?: false | null;
 }
 
-export interface ChatCompletionCreateParamsStreaming
-  extends ChatCompletionCreateParamsBase {
+export interface ChatCompletionCreateParamsStreaming extends ChatCompletionCreateParamsBase {
   stream: true;
   stream_options?: { include_usage?: boolean };
 }
@@ -60,17 +77,32 @@ export type ChatCompletionCreateParams =
 // Chat Completion – Response (non-streaming)
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface ChatCompletionLogprob {
+  token: string;
+  logprob: number;
+  bytes?: number[] | null;
+  top_logprobs?: Array<{ token: string; logprob: number; bytes?: number[] | null }>;
+}
+
+export interface ChatCompletionChoiceLogprobs {
+  content?: ChatCompletionLogprob[] | null;
+  refusal?: ChatCompletionLogprob[] | null;
+}
+
 export interface ChatCompletionChoiceMessage {
   role: 'assistant';
   content: string | null;
+  refusal?: string | null;
   function_call?: { name: string; arguments: string };
   tool_calls?: ToolCall[];
+  audio?: { id: string; data: string; expires_at: number; transcript?: string };
 }
 
 export interface ChatCompletionChoice {
   index: number;
   message: ChatCompletionChoiceMessage;
   finish_reason: FinishReason | null;
+  logprobs?: ChatCompletionChoiceLogprobs | null;
 }
 
 export interface ChatCompletion {
@@ -81,6 +113,7 @@ export interface ChatCompletion {
   choices: ChatCompletionChoice[];
   usage?: Usage;
   system_fingerprint?: string;
+  service_tier?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,8 +121,9 @@ export interface ChatCompletion {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface ChatCompletionChunkDelta {
-  role?: string;
+  role?: Role;
   content?: string | null;
+  refusal?: string | null;
   function_call?: ToolCallFunction;
   tool_calls?: Array<{
     index: number;
@@ -103,6 +137,7 @@ export interface ChatCompletionChunkChoice {
   index: number;
   delta: ChatCompletionChunkDelta;
   finish_reason: FinishReason | null;
+  logprobs?: ChatCompletionChoiceLogprobs | null;
 }
 
 export interface ChatCompletionChunk {
@@ -113,4 +148,5 @@ export interface ChatCompletionChunk {
   choices: ChatCompletionChunkChoice[];
   usage?: Usage | null;
   system_fingerprint?: string;
+  service_tier?: string | null;
 }

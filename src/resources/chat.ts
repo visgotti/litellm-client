@@ -5,6 +5,7 @@ import type {
   ChatCompletion,
   ChatCompletionChunk,
 } from '../types/chat';
+import type { RequestOptions } from '../types/request-options';
 import type { RequestFn, StreamRequestFn } from '../client';
 import { Stream } from '../streaming';
 
@@ -14,41 +15,44 @@ export class ChatCompletionsResource {
     private streamRequest: StreamRequestFn,
   ) {}
 
-  async create(
+  create(
     params: ChatCompletionCreateParamsNonStreaming,
+    options?: RequestOptions,
   ): Promise<ChatCompletion>;
-
-  async create(
+  create(
     params: ChatCompletionCreateParamsStreaming,
+    options?: RequestOptions,
   ): Promise<Stream<ChatCompletionChunk>>;
-
-  async create(
+  create(
     params: ChatCompletionCreateParams,
+    options?: RequestOptions,
   ): Promise<ChatCompletion | Stream<ChatCompletionChunk>>;
-
-  async create(
+  create(
     params: ChatCompletionCreateParams,
+    options?: RequestOptions,
   ): Promise<ChatCompletion | Stream<ChatCompletionChunk>> {
     const { extra_headers, metadata, ...body } = params;
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...(options?.headers ?? {}) };
     if (extra_headers) Object.assign(headers, extra_headers);
-    if (metadata) headers['x-litellm-metadata'] = JSON.stringify(metadata);
-
-    if ('stream' in params && params.stream) {
-      return this.streamRequest<ChatCompletionChunk>(
-        'POST',
-        '/v1/chat/completions',
-        body,
-        Object.keys(headers).length > 0 ? headers : undefined,
-      );
+    if (metadata !== undefined) {
+      headers['x-litellm-metadata'] = JSON.stringify(metadata);
     }
+    const opts: RequestOptions = { ...(options ?? {}), headers };
 
-    return this.request<ChatCompletion>(
-      'POST',
-      '/v1/chat/completions',
-      body,
-      Object.keys(headers).length > 0 ? headers : undefined,
-    );
+    if ('stream' in params && params.stream === true) {
+      return this.streamRequest<ChatCompletionChunk>({
+        method: 'POST',
+        path: '/v1/chat/completions',
+        body: { kind: 'json', value: body },
+        options: opts,
+      });
+    }
+    return this.request<ChatCompletion>({
+      method: 'POST',
+      path: '/v1/chat/completions',
+      body: { kind: 'json', value: body },
+      options: opts,
+    });
   }
 }
 

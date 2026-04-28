@@ -1,14 +1,16 @@
 {
   "name": "litellm-proxy",
-  "version": "0.1.0",
-  "description": "Production-grade TypeScript client for the LiteLLM proxy server. Zero runtime dependencies.",
+  "version": "1.0.0",
+  "description": "Production-grade TypeScript client for the LiteLLM proxy server. Zero runtime dependencies, full surface coverage, streaming, retries, typed errors.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
@@ -27,15 +29,28 @@
     "proxy",
     "llm",
     "openai",
+    "anthropic",
+    "gemini",
     "ai",
     "typescript",
-    "client"
+    "client",
+    "sdk",
+    "streaming",
+    "embeddings"
   ],
   "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/visgotti/litellm-proxy.git"
+  },
+  "homepage": "https://github.com/visgotti/litellm-proxy#readme",
+  "bugs": {
+    "url": "https://github.com/visgotti/litellm-proxy/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=18"

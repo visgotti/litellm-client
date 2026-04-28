@@ -3,6 +3,18 @@
  */
 import { parseSSEStream, Stream } from '../../src/streaming';
 
+interface TestChunk {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    delta: { content?: string };
+    finish_reason: string | null;
+  }>;
+}
+
 function createReadableStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   let index = 0;
@@ -27,8 +39,8 @@ describe('Streaming', () => {
         'data: [DONE]\n\n',
       ]);
 
-      const chunks = [];
-      for await (const chunk of parseSSEStream(stream)) {
+      const chunks: TestChunk[] = [];
+      for await (const chunk of parseSSEStream<TestChunk>(stream)) {
         chunks.push(chunk);
       }
 
@@ -44,8 +56,8 @@ describe('Streaming', () => {
         'data: [DONE]\n\n',
       ]);
 
-      const chunks = [];
-      for await (const chunk of parseSSEStream(stream)) {
+      const chunks: TestChunk[] = [];
+      for await (const chunk of parseSSEStream<TestChunk>(stream)) {
         chunks.push(chunk);
       }
 
@@ -98,8 +110,8 @@ describe('Streaming', () => {
         'data: {"id":"1","object":"chat.completion.chunk","created":1,"model":"m","choices":[{"index":0,"delta":{"content":"buffered"},"finish_reason":"stop"}]}',
       ]);
 
-      const chunks = [];
-      for await (const chunk of parseSSEStream(stream)) {
+      const chunks: TestChunk[] = [];
+      for await (const chunk of parseSSEStream<TestChunk>(stream)) {
         chunks.push(chunk);
       }
 
@@ -113,8 +125,8 @@ describe('Streaming', () => {
         'data: [DONE]',
       ]);
 
-      const chunks = [];
-      for await (const chunk of parseSSEStream(stream)) {
+      const chunks: TestChunk[] = [];
+      for await (const chunk of parseSSEStream<TestChunk>(stream)) {
         chunks.push(chunk);
       }
 
