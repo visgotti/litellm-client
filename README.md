@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/visgotti/litellm-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/visgotti/litellm-proxy/actions/workflows/ci.yml)
 [![E2E](https://github.com/visgotti/litellm-proxy/actions/workflows/live-e2e.yml/badge.svg)](https://github.com/visgotti/litellm-proxy/actions/workflows/live-e2e.yml)
+[![Codecov](https://codecov.io/gh/visgotti/litellm-proxy/branch/main/graph/badge.svg)](https://codecov.io/gh/visgotti/litellm-proxy)
 [![npm](https://img.shields.io/npm/v/litellm-proxy.svg)](https://www.npmjs.com/package/litellm-proxy)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -286,6 +287,191 @@ const out = await client.passThrough.anthropic.post(
   '/v1/messages',
   { model: 'claude-opus-4-5', max_tokens: 512, messages: [...] },
 );
+```
+
+### Embeddings
+
+```ts
+const embeddings = await client.embeddings.create({
+  model: 'text-embedding-3-small',
+  input: ['hello world', 'foo bar'],
+});
+
+embeddings.data.forEach(({ embedding, index }) => {
+  console.log(`[${index}]`, embedding); // 1536-dim vector
+});
+```
+
+### Images
+
+```ts
+// Generate images
+const images = await client.images.generate({
+  model: 'dall-e-3',
+  prompt: 'a serene landscape',
+  n: 1,
+  size: '1024x1024',
+});
+
+console.log(images.data[0].url); // or .b64_json if format: 'b64_json'
+
+// Edit an existing image
+const edited = await client.images.edit({
+  model: 'dall-e-2',
+  image: await fs.readFile('original.png'),
+  mask: await fs.readFile('mask.png'),
+  prompt: 'replace the sky with stars',
+});
+```
+
+### Audio
+
+```ts
+// Text-to-speech (returns ArrayBuffer)
+const speechBuffer = await client.audio.speech.create({
+  model: 'tts-1',
+  voice: 'alloy',
+  input: 'Hello, world!',
+});
+await fs.writeFile('output.mp3', Buffer.from(speechBuffer));
+
+// Speech-to-text (multipart FormData upload)
+const transcription = await client.audio.transcriptions.create({
+  model: 'whisper-1',
+  file: await fs.readFile('audio.mp3'),
+  filename: 'audio.mp3',
+});
+console.log(transcription.text);
+
+// Translate audio to English
+const translation = await client.audio.translations.create({
+  model: 'whisper-1',
+  file: await fs.readFile('spanish_audio.mp3'),
+  filename: 'spanish_audio.mp3',
+});
+```
+
+### Rerank
+
+```ts
+const reranked = await client.rerank.create({
+  model: 'jina-reranker-v2-base-multilingual',
+  query: 'What is the capital of France?',
+  documents: [
+    'Paris is the capital of France',
+    'London is the capital of England',
+    'Berlin is the capital of Germany',
+  ],
+  top_n: 2,
+});
+
+console.log(reranked.results); // sorted by relevance score
+```
+
+### Typed model strings
+
+All model parameters accept typed model enums for IDE autocomplete:
+
+```ts
+import type {
+  ChatModel,
+  AnthropicModel,
+  OpenAIModel,
+  GeminiModel,
+  MistralModel,
+} from 'litellm-proxy';
+
+// Typed — your IDE shows available models as you type
+const response = await client.chat.completions.create({
+  model: 'gpt-4o' as OpenAIModel,
+  messages: [{ role: 'user', content: 'Hi' }],
+});
+
+const anthropic = await client.anthropic.messages.create({
+  model: 'claude-opus-4-5' as AnthropicModel,
+  max_tokens: 1024,
+  messages: [{ role: 'user', content: 'Hi' }],
+});
+
+// Generic ChatModel covers all providers
+const generic: ChatModel = 'gpt-4o'; // or any supported model string
+```
+
+### Vector stores
+
+```ts
+// Create and upload to a vector store
+const store = await client.vectorStores.create({
+  name: 'my-embeddings',
+});
+
+const file = await client.files.create({
+  file: await fs.readFile('documents.pdf'),
+  filename: 'documents.pdf',
+  purpose: 'assistants',
+});
+
+await client.vectorStores.files.create({
+  vector_store_id: store.id,
+  file_id: file.id,
+});
+
+// Search the store
+const results = await client.vectorStores.search({
+  vector_store_id: store.id,
+  query: 'machine learning',
+  limit: 5,
+});
+```
+
+### Spending and observability
+
+```ts
+// View recent spend
+const logs = await client.spend.logs({
+  limit: 10,
+});
+logs.data.forEach(({ cost, model, total_tokens, user_id }) => {
+  console.log(`${user_id} used ${model}: $${cost} (${total_tokens} tokens)`);
+});
+
+// Get global spend aggregates
+const global = await client.spend.global();
+console.log(`Total spend: $${global.total_spend}`);
+console.log(`Total requests: ${global.total_requests}`);
+
+// Cache hit tracking
+const hits = await client.spend.activityCacheHits();
+console.log(`Cache hit rate: ${(hits.cache_hit_rate * 100).toFixed(2)}%`);
+```
+
+### Cache management
+
+```ts
+// Check cache health
+const info = await client.cache.redisInfo();
+console.log(`Redis memory: ${info.used_memory_human}`);
+
+// Flush cache
+await client.cache.flushAll();
+
+// Test connection
+const settings = await client.cache.settings.get();
+console.log(`Cache type: ${settings.cache_type}`);
+```
+
+### Compliance and auditing
+
+```ts
+// Check compliance status
+const compliance = await client.compliance.getStatus();
+console.log(compliance.status);
+
+// View audit logs
+const logs = await client.compliance.logs({
+  limit: 50,
+  offset: 0,
+});
 ```
 
 ## Compatibility
