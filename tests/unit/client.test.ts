@@ -1,7 +1,7 @@
 /**
  * @group unit
  */
-import { LiteLLMProxyClient } from '../../src/client';
+import { LiteLLMClient } from '../../src/client';
 import {
   AuthenticationError,
   RateLimitError,
@@ -44,13 +44,13 @@ function sseResponse(chunks: string[]): Response {
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('LiteLLMProxyClient', () => {
+describe('LiteLLMClient', () => {
   let mockFetch: jest.Mock;
-  let client: LiteLLMProxyClient;
+  let client: LiteLLMClient;
 
   beforeEach(() => {
     mockFetch = jest.fn();
-    client = new LiteLLMProxyClient({
+    client = new LiteLLMClient({
       baseUrl: 'http://localhost:4000',
       apiKey: 'sk-test',
       timeout: 5000,
@@ -64,7 +64,7 @@ describe('LiteLLMProxyClient', () => {
   describe('config', () => {
     it('strips trailing slashes from baseUrl', () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'healthy' }));
-      const c = new LiteLLMProxyClient({
+      const c = new LiteLLMClient({
         baseUrl: 'http://localhost:4000///',
         fetch: mockFetch,
         maxRetries: 0,
@@ -85,7 +85,7 @@ describe('LiteLLMProxyClient', () => {
 
     it('does not send Authorization header without apiKey', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ object: 'list', data: [] }));
-      const c = new LiteLLMProxyClient({
+      const c = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         fetch: mockFetch,
         maxRetries: 0,
@@ -97,7 +97,7 @@ describe('LiteLLMProxyClient', () => {
 
     it('sends default headers', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ object: 'list', data: [] }));
-      const c = new LiteLLMProxyClient({
+      const c = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         defaultHeaders: { 'x-custom': 'val' },
         fetch: mockFetch,
@@ -425,7 +425,7 @@ describe('LiteLLMProxyClient', () => {
     it('deletes a user', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ deleted_users: ['u1'] }));
       const result = await client.users.delete({ user_ids: ['u1'] });
-      expect(result.deleted_users).toEqual(['u1']);
+      expect(Array.isArray(result) ? result : result.deleted_users).toEqual(['u1']);
     });
   });
 
@@ -500,7 +500,7 @@ describe('LiteLLMProxyClient', () => {
     it('checks liveness', async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'healthy' }));
       const result = await client.health.liveness();
-      expect(result.status).toBe('healthy');
+      expect(typeof result === 'string' ? result : result.status).toBe('healthy');
     });
 
     it('checks readiness', async () => {
@@ -578,7 +578,7 @@ describe('LiteLLMProxyClient', () => {
 
   describe('retry', () => {
     it('retries on 429 up to maxRetries', async () => {
-      const retryClient = new LiteLLMProxyClient({
+      const retryClient = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         maxRetries: 2,
         fetch: mockFetch,
@@ -595,7 +595,7 @@ describe('LiteLLMProxyClient', () => {
     });
 
     it('retries on 500', async () => {
-      const retryClient = new LiteLLMProxyClient({
+      const retryClient = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         maxRetries: 1,
         fetch: mockFetch,
@@ -611,7 +611,7 @@ describe('LiteLLMProxyClient', () => {
     });
 
     it('does not retry on 401', async () => {
-      const retryClient = new LiteLLMProxyClient({
+      const retryClient = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         maxRetries: 2,
         fetch: mockFetch,
@@ -623,7 +623,7 @@ describe('LiteLLMProxyClient', () => {
     });
 
     it('retries on network errors', async () => {
-      const retryClient = new LiteLLMProxyClient({
+      const retryClient = new LiteLLMClient({
         baseUrl: 'http://localhost:4000',
         maxRetries: 1,
         fetch: mockFetch,
@@ -636,6 +636,353 @@ describe('LiteLLMProxyClient', () => {
       const result = await retryClient.models.list();
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(result.data).toEqual([]);
+    });
+
+    it('honors Retry-After header on 429', async () => {
+      const retryClient = new LiteLLMClient({
+        baseUrl: 'http://localhost:4000',
+        maxRetries: 1,
+        fetch: mockFetch,
+      });
+
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({}), {
+            status: 429,
+            headers: { 'content-type': 'application/json', 'retry-after': '0' },
+          }),
+        )
+        .mockResolvedValueOnce(jsonResponse({ object: 'list', data: [] }));
+
+      const result = await retryClient.models.list();
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(result.data).toEqual([]);
+    });
+
+    it('rethrows non-network/non-timeout errors without retry', async () => {
+      const retryClient = new LiteLLMClient({
+        baseUrl: 'http://localhost:4000',
+        maxRetries: 3,
+        fetch: mockFetch,
+      });
+      const oddError = new RangeError('weird');
+      mockFetch.mockRejectedValueOnce(oddError);
+      await expect(retryClient.models.list()).rejects.toBe(oddError);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('fails after exhausting retries', async () => {
+      const retryClient = new LiteLLMClient({
+        baseUrl: 'http://localhost:4000',
+        maxRetries: 1,
+        fetch: mockFetch,
+      });
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse({}, 500))
+        .mockResolvedValueOnce(jsonResponse({}, 500));
+
+      await expect(retryClient.models.list()).rejects.toThrow(InternalServerError);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // ───── Body kinds ────────────────────────────────────────────────────────
+
+  describe('request bodies', () => {
+    it('sends multipart form data without Content-Type header', async () => {
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ id: 'file_1', object: 'file', purpose: 'batch' }),
+      );
+      const bytes = new Uint8Array([1, 2, 3]);
+      await client.files.create({
+        file: bytes,
+        filename: 'a.jsonl',
+        purpose: 'batch',
+      } as any);
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.body).toBeInstanceOf(FormData);
+      expect(init.headers['content-type']).toBeUndefined();
+      expect(init.headers['Content-Type']).toBeUndefined();
+    });
+
+    it('handles GET requests with no body', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'healthy' }));
+      await client.health.liveness();
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.body).toBeUndefined();
+    });
+
+    it('appends query parameters to URLs', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ team_id: 't1' }));
+      await client.teams.info('t1');
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'http://localhost:4000/team/info?team_id=t1',
+      );
+    });
+
+    it('appends query parameters to a path that already has a query string', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+      // Internal: a request with a path containing '?' and additional query params.
+      await (client as any).request({
+        method: 'GET',
+        path: '/some?fixed=1',
+        options: { query: { extra: 'v' } },
+      });
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'http://localhost:4000/some?fixed=1&extra=v',
+      );
+    });
+
+    it('skips undefined/null query values', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+      await (client as any).request({
+        method: 'GET',
+        path: '/q',
+        options: { query: { a: 'x', b: undefined, c: null } },
+      });
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain('a=x');
+      expect(url).not.toContain('b=');
+      expect(url).not.toContain('c=');
+    });
+  });
+
+  // ───── Response decoding ─────────────────────────────────────────────────
+
+  describe('response decoding', () => {
+    it('returns undefined for 204 No Content', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+      const result = await (client as any).request({ method: 'POST', path: '/x' });
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined for empty non-JSON bodies', async () => {
+      mockFetch.mockResolvedValueOnce(new Response('', { status: 200 }));
+      const result = await (client as any).request({ method: 'GET', path: '/x' });
+      expect(result).toBeUndefined();
+    });
+
+    it('parses JSON-shaped text bodies even without content-type', async () => {
+      mockFetch.mockResolvedValueOnce(new Response('{"k":1}', { status: 200 }));
+      const result = await (client as any).request({ method: 'GET', path: '/x' });
+      expect(result).toEqual({ k: 1 });
+    });
+
+    it('returns plain text when response is not JSON', async () => {
+      mockFetch.mockResolvedValueOnce(new Response('plain text', { status: 200 }));
+      const result = await (client as any).request({ method: 'GET', path: '/x' });
+      expect(result).toBe('plain text');
+    });
+  });
+
+  // ───── Cancellation / timeout ────────────────────────────────────────────
+
+  describe('cancellation', () => {
+    it('aborts the request when the external signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      mockFetch.mockImplementationOnce((_url: string, init: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            const err = new DOMException('aborted', 'AbortError');
+            reject(err);
+          });
+          // Synchronously trigger if already aborted.
+          if (init.signal?.aborted) {
+            const err = new DOMException('aborted', 'AbortError');
+            reject(err);
+          }
+        });
+      });
+
+      await expect(
+        client.models.list({ signal: controller.signal } as any),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    });
+
+    it('aborts streaming requests when external signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      mockFetch.mockImplementationOnce((_url: string, init: RequestInit) =>
+        Promise.reject(
+          init.signal?.aborted
+            ? new DOMException('aborted', 'AbortError')
+            : new Error('unexpected'),
+        ),
+      );
+
+      await expect(
+        client.chat.completions.create(
+          {
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'hi' }],
+            stream: true,
+          },
+          { signal: controller.signal } as any,
+        ),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    });
+
+    it('per-request timeout option overrides client default', async () => {
+      const fastClient = new LiteLLMClient({
+        baseUrl: 'http://localhost:4000',
+        maxRetries: 0,
+        fetch: mockFetch,
+      });
+
+      mockFetch.mockImplementationOnce(
+        (_url: string, init: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () => {
+              reject(new DOMException('aborted', 'AbortError'));
+            });
+          }),
+      );
+
+      await expect(
+        fastClient.models.list({ timeout: 10 } as any),
+      ).rejects.toThrow(TimeoutError);
+    });
+  });
+
+  // ───── Binary body kind ──────────────────────────────────────────────────
+
+  describe('binary body', () => {
+    it('sends a binary body with explicit contentType (Uint8Array)', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      const bytes = new Uint8Array([0xde, 0xad, 0xbe, 0xef]);
+      await (client as any).request({
+        method: 'POST',
+        path: '/raw',
+        body: { kind: 'binary', value: bytes, contentType: 'application/octet-stream' },
+      });
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers['content-type']).toBe('application/octet-stream');
+      expect(init.body).toBeInstanceOf(Uint8Array);
+    });
+
+    it('sends a Blob binary body without contentType override', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      const blob = new Blob(['hello'], { type: 'text/plain' });
+      await (client as any).request({
+        method: 'POST',
+        path: '/raw',
+        body: { kind: 'binary', value: blob },
+      });
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.body).toBe(blob);
+    });
+
+    it('sends an ArrayBuffer binary body', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      const buf = new ArrayBuffer(4);
+      new Uint8Array(buf).set([1, 2, 3, 4]);
+      await (client as any).request({
+        method: 'POST',
+        path: '/raw',
+        body: { kind: 'binary', value: buf, contentType: 'application/x-bin' },
+      });
+      const [, init] = mockFetch.mock.calls[0];
+      expect(init.headers['content-type']).toBe('application/x-bin');
+      expect(init.body).toBeInstanceOf(Uint8Array);
+    });
+  });
+
+  // ───── Defensive parseError in request() ─────────────────────────────────
+
+  describe('request() error fallback', () => {
+    it('throws via parseError when rawRequest yields a non-ok response', async () => {
+      // Override rawRequest so it returns a non-ok response without throwing.
+      // This exercises the defensive `if (!response.ok)` branch inside request().
+      const nonOk = jsonResponse({ error: { message: 'boom' } }, 500);
+      (client as any).rawRequest = jest.fn().mockResolvedValueOnce(nonOk);
+      await expect(
+        (client as any).request({ method: 'GET', path: '/x' }),
+      ).rejects.toThrow(InternalServerError);
+    });
+  });
+
+  // ───── Config defaults ────────────────────────────────────────────────────
+
+  describe('config defaults', () => {
+    it('uses DEFAULT_MAX_RETRIES and globalThis.fetch when not provided', () => {
+      // Constructing without maxRetries or fetch exercises the ?? fallback branches.
+      const c = new LiteLLMClient({ baseUrl: 'http://localhost:4000' });
+      expect(c).toBeInstanceOf(LiteLLMClient);
+    });
+  });
+
+  // ───── Internal request edge cases ───────────────────────────────────────
+
+  describe('request internals', () => {
+    it('handles a response with no content-type header', async () => {
+      // Using a Uint8Array body so the Response API does not auto-assign
+      // a default content-type; this exercises the `?? ''` fallback.
+      mockFetch.mockResolvedValueOnce(
+        new Response(new TextEncoder().encode('{"a":1}'), { status: 200 }),
+      );
+      const result = await (client as any).request({ method: 'GET', path: '/x' });
+      expect(result).toEqual({ a: 1 });
+    });
+
+    it('prepends a leading slash when path does not start with one', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+      await (client as any).request({ method: 'GET', path: 'noslash' });
+      expect(mockFetch.mock.calls[0][0]).toBe('http://localhost:4000/noslash');
+    });
+
+    it('falls back to ConnectionError when retry loop never runs (maxRetries < 0)', async () => {
+      const c = new LiteLLMClient({
+        baseUrl: 'http://localhost:4000',
+        maxRetries: -1,
+        fetch: mockFetch,
+      });
+      // No fetch should be invoked because the loop body never runs.
+      await expect(
+        (c as any).request({ method: 'GET', path: '/x' }),
+      ).rejects.toThrow('Request failed after retries');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('streamRequest works when params.options is undefined', async () => {
+      mockFetch.mockResolvedValueOnce(sseResponse(['data: [DONE]\n\n']));
+      const stream = await (client as any).streamRequest({
+        method: 'POST',
+        path: '/x',
+        body: { kind: 'json', value: {} },
+      });
+      // Drain
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of stream) {
+        // empty
+      }
+      expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
+  // ───── Streaming abort ───────────────────────────────────────────────────
+
+  describe('streaming cancellation', () => {
+    it('forwards an external abort signal into the stream controller', async () => {
+      mockFetch.mockResolvedValueOnce(sseResponse(['data: [DONE]\n\n']));
+
+      const external = new AbortController();
+      const stream = await client.chat.completions.create(
+        {
+          model: 'gpt-4',
+          messages: [{ role: 'user', content: 'x' }],
+          stream: true,
+        },
+        { signal: external.signal } as any,
+      );
+      // Drain
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      for await (const _ of stream) {
+        // empty
+      }
+      external.abort(); // no-op after drain — just ensures no throw
     });
   });
 });

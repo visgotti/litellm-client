@@ -1,16 +1,197 @@
 model_list:
+  # ─── Chat ────────────────────────────────────────────────────────────────
   - model_name: "fake-openai-chat"
     litellm_params:
       model: "openai/fake"
       api_key: "fake-key"
       api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "chat"
 
+  # ─── Text completions (legacy) ───────────────────────────────────────────
+  - model_name: "fake-openai-completion"
+    litellm_params:
+      model: "text-completion-openai/fake"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "completion"
+
+  # ─── Embeddings ──────────────────────────────────────────────────────────
   - model_name: "fake-openai-embedding"
     litellm_params:
       model: "openai/fake"
       api_key: "fake-key"
       api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "embedding"
+
+  # ─── Image generation ────────────────────────────────────────────────────
+  - model_name: "fake-image-gen"
+    litellm_params:
+      model: "openai/dall-e-3"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "image_generation"
+
+  # ─── Audio TTS ───────────────────────────────────────────────────────────
+  - model_name: "fake-tts"
+    litellm_params:
+      model: "openai/tts-1"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "audio_speech"
+
+  # ─── Audio STT ───────────────────────────────────────────────────────────
+  - model_name: "fake-whisper"
+    litellm_params:
+      model: "openai/whisper-1"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "audio_transcription"
+
+  # ─── Moderations ─────────────────────────────────────────────────────────
+  - model_name: "fake-moderation"
+    litellm_params:
+      model: "openai/text-moderation-stable"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "moderation"
+
+  # ─── Rerank ──────────────────────────────────────────────────────────────
+  - model_name: "fake-rerank"
+    litellm_params:
+      model: "cohere/rerank-english-v3.0"
+      api_key: "fake-key"
+      api_base: "https://exampleopenaiendpoint-production.up.railway.app"
+    model_info:
+      mode: "rerank"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Live provider deployments — only callable when their API keys are
+  # provided to the container at runtime. Tests gate themselves on the key
+  # presence so the suite is non-flaky when keys are absent.
+  # ──────────────────────────────────────────────────────────────────────────
+
+  # OpenAI
+  - model_name: "live-openai-chat"
+    litellm_params:
+      model: "openai/gpt-4o-mini"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "chat"
+
+  - model_name: "live-openai-embedding"
+    litellm_params:
+      model: "openai/text-embedding-3-small"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "embedding"
+
+  - model_name: "live-openai-image"
+    litellm_params:
+      model: "openai/dall-e-2"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "image_generation"
+
+  - model_name: "live-openai-tts"
+    litellm_params:
+      model: "openai/tts-1"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "audio_speech"
+
+  - model_name: "live-openai-stt"
+    litellm_params:
+      model: "openai/whisper-1"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "audio_transcription"
+
+  - model_name: "live-openai-moderation"
+    litellm_params:
+      model: "openai/omni-moderation-latest"
+      api_key: "os.environ/OPENAI_API_KEY"
+    model_info:
+      mode: "moderation"
+
+  # Anthropic
+  - model_name: "live-anthropic-chat"
+    litellm_params:
+      model: "anthropic/claude-haiku-4-5"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # Bare alias so /v1/messages (Anthropic-native) can resolve the model string.
+  - model_name: "claude-haiku-4-5"
+    litellm_params:
+      model: "anthropic/claude-haiku-4-5"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # DeepSeek
+  - model_name: "live-deepseek-chat"
+    litellm_params:
+      model: "deepseek/deepseek-chat"
+      api_key: "os.environ/DEEPSEEK_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # Google Gemini
+  - model_name: "live-gemini-chat"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash-lite"
+      api_key: "os.environ/GEMINI_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # Bare alias so Gemini-native generateContent / streamGenerateContent
+  # endpoints can resolve the model string from the URL path.
+  - model_name: "gemini-2.5-flash-lite"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash-lite"
+      api_key: "os.environ/GEMINI_API_KEY"
+    model_info:
+      mode: "chat"
+
+  - model_name: "live-gemini-embedding"
+    litellm_params:
+      model: "gemini/gemini-embedding-001"
+      api_key: "os.environ/GEMINI_API_KEY"
+    model_info:
+      mode: "embedding"
+
+  # Alibaba (DashScope, OpenAI-compatible)
+  - model_name: "live-alibaba-chat"
+    litellm_params:
+      model: "openai/qwen-turbo"
+      api_key: "os.environ/ALIBABA_API_KEY"
+      api_base: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    model_info:
+      mode: "chat"
+
+  - model_name: "live-alibaba-embedding"
+    litellm_params:
+      model: "openai/text-embedding-v3"
+      api_key: "os.environ/ALIBABA_API_KEY"
+      api_base: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+    model_info:
+      mode: "embedding"
+
+litellm_settings:
+  drop_params: True
+  set_verbose: False
+  request_timeout: 60
 
 general_settings:
   master_key: "sk-e2e-test-master-key"
-  database_url: null
+  database_url: "postgresql://litellm:litellm@postgres:5432/litellm"
+  store_model_in_db: True
+  disable_spend_logs: False

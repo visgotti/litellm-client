@@ -2,7 +2,7 @@
  * @group unit
  */
 import {
-  LiteLLMProxyError,
+  LiteLLMError,
   AuthenticationError,
   PermissionDeniedError,
   NotFoundError,
@@ -48,9 +48,9 @@ describe('Errors', () => {
       expect(err.status).toBe(502);
     });
 
-    it('returns generic LiteLLMProxyError for other codes', () => {
+    it('returns generic LiteLLMError for other codes', () => {
       const err = buildError(422, emptyHeaders, { error: { message: 'validation' } });
-      expect(err).toBeInstanceOf(LiteLLMProxyError);
+      expect(err).toBeInstanceOf(LiteLLMError);
       expect(err.status).toBe(422);
       expect(err.message).toBe('validation');
     });
@@ -63,6 +63,24 @@ describe('Errors', () => {
     it('falls back to HTTP status when body is null', () => {
       const err = buildError(418, emptyHeaders, null);
       expect(err.message).toBe('HTTP 418');
+    });
+
+    it('AuthenticationError uses detail when error.message missing', () => {
+      const err = buildError(401, emptyHeaders, { detail: 'token expired' });
+      expect(err).toBeInstanceOf(AuthenticationError);
+      expect(err.message).toBe('token expired');
+    });
+
+    it('AuthenticationError uses default message when body is empty', () => {
+      const err = buildError(401, emptyHeaders, {});
+      expect(err).toBeInstanceOf(AuthenticationError);
+      expect(err.message).toBe('Authentication failed');
+    });
+
+    it('NotFoundError uses default message when body is empty', () => {
+      const err = buildError(404, emptyHeaders, {});
+      expect(err).toBeInstanceOf(NotFoundError);
+      expect(err.message).toBe('Resource not found');
     });
   });
 

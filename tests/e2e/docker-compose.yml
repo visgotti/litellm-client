@@ -1,14 +1,44 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
   litellm-proxy:
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:main-stable
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "14000:4000"
+    environment:
+      LITELLM_MASTER_KEY: "sk-e2e-test-master-key"
+      LITELLM_SALT_KEY: "sk-e2e-salt-key-1234567890abcdef"
+      DATABASE_URL: "postgresql://litellm:litellm@postgres:5432/litellm"
+      STORE_MODEL_IN_DB: "True"
+      # Real provider keys forwarded from host env (CI secrets). Empty if absent —
+      # tests for those providers self-skip when the corresponding env var is empty.
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      ALIBABA_API_KEY: "${ALIBABA_API_KEY:-}"
     volumes:
       - ./litellm-config.yaml:/app/config.yaml
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      test:
+        - "CMD-SHELL"
+        - "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:4000/health/liveliness').status==200 else 1)\""
       interval: 5s
       timeout: 10s
-      retries: 30
+      retries: 60
       start_period: 30s

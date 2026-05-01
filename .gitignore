@@ -3,3 +3,12 @@ dist/
 coverage/
 .env
 *.tgz
+
+# Internal audit / scratch tracking — kept out of the repo.
+docs/
+AUDIT.md
+CHECKLIST.md
+PARITY.md
+
+# Local Claude Code workspace metadata.
+.claude/
