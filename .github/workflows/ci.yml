@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -45,7 +43,7 @@ jobs:
           path: coverage/
       - name: Upload coverage to Codecov
         if: matrix.node-version == 24
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
@@ -69,7 +67,64 @@ jobs:
           name: dist
           path: dist/
 
-# Note: end-to-end tests against a real LiteLLM proxy + live providers run
-# in the separate `live-e2e.yml` workflow (post-merge to main + manual dispatch).
-# That separation keeps PR feedback fast and prevents fork PRs from needing
-# access to provider secrets.
+  # ───────────────────── e2e (per-provider matrix) ─────────────
+  # Runs the full LiteLLM proxy round-trip against a single live provider per
+  # matrix leg. All 5 legs run concurrently. Each leg fails hard if its own
+  # *_API_KEY is missing — there's no silent skip.
+  #
+  # Only fires after `build` succeeds, and only on push to `main` or manual
+  # dispatch — never on PRs — so secrets are never exposed to forks.
+  e2e:
+    name: e2e (${{ matrix.provider }})
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 25
+    environment: live
+
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: [openai, anthropic, deepseek, gemini, alibaba]
+
+    env:
+      LITELLM_E2E_PROVIDER: ${{ matrix.provider }}
+      OPENAI_API_KEY:    ${{ matrix.provider == 'openai'    && secrets.OPENAI_API_KEY    || '' }}
+      ANTHROPIC_API_KEY: ${{ matrix.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+      DEEPSEEK_API_KEY:  ${{ matrix.provider == 'deepseek'  && secrets.DEEPSEEK_API_KEY  || '' }}
+      GEMINI_API_KEY:    ${{ matrix.provider == 'gemini'    && secrets.GEMINI_API_KEY    || '' }}
+      ALIBABA_API_KEY:   ${{ matrix.provider == 'alibaba'   && secrets.ALIBABA_API_KEY   || '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pre-pull container images
+        run: |
+          docker pull postgres:16-alpine
+          docker pull ghcr.io/berriai/litellm:main-stable
+
+      - name: Run e2e suite (${{ matrix.provider }})
+        run: npm run test:e2e
+
+      - name: Dump LiteLLM proxy logs on failure
+        if: failure()
+        run: |
+          docker compose \
+            -f tests/e2e/docker-compose.yml \
+            -p litellm-client-e2e \
+            logs --no-color litellm-proxy || true
+
+      - name: Always tear down the stack
+        if: always()
+        run: |
+          docker compose \
+            -f tests/e2e/docker-compose.yml \
+            -p litellm-client-e2e \
+            down -v --remove-orphans || true
