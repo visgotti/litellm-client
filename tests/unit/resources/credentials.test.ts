@@ -1,7 +1,10 @@
 /**
  * @group unit
  */
-import { CredentialsResource } from '../../../src/resources/credentials';
+import {
+  CredentialsResource,
+  VaultConfigOverridesResource,
+} from '../../../src/resources/credentials';
 
 describe('CredentialsResource', () => {
   let request: jest.Mock;
@@ -132,7 +135,7 @@ describe('CredentialsResource', () => {
   // ── vault sub-resource ────────────────────────────────────────────────────
 
   it('exposes vault sub-resource', () => {
-    expect(r.vault).toBeDefined();
+    expect(r.vault).toBeInstanceOf(VaultConfigOverridesResource);
   });
 
   it('vault.set POSTs /config_overrides/hashicorp_vault with body', async () => {

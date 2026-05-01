@@ -1,5 +1,5 @@
 {
-  "name": "litellm-proxy",
+  "name": "litellm-client",
   "version": "1.0.0",
   "description": "Production-grade TypeScript client for the LiteLLM proxy server. Zero runtime dependencies, full surface coverage, streaming, retries, typed errors.",
   "main": "dist/index.js",
@@ -18,7 +18,8 @@
     "lint": "tsc --noEmit",
     "test": "jest --config jest.config.ts --group=-e2e",
     "test:unit": "jest --config jest.config.ts --group=-e2e --coverage",
-    "test:e2e": "jest --config jest.e2e.config.ts --group=e2e --runInBand --verbose",
+    "test:e2e": "bash scripts/run-e2e-isolated.sh",
+    "test:e2e:single-pass": "jest --config jest.e2e.config.ts --group=e2e --runInBand --verbose",
     "test:e2e:setup": "docker compose -f tests/e2e/docker-compose.yml up -d --wait",
     "test:e2e:teardown": "docker compose -f tests/e2e/docker-compose.yml down -v",
     "test:coverage": "jest --config jest.config.ts --group=-e2e --coverage --coverageReporters=lcov --coverageReporters=text",
@@ -42,11 +43,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/visgotti/litellm-proxy.git"
+    "url": "https://github.com/visgotti/litellm-client.git"
   },
-  "homepage": "https://github.com/visgotti/litellm-proxy#readme",
+  "homepage": "https://github.com/visgotti/litellm-client#readme",
   "bugs": {
-    "url": "https://github.com/visgotti/litellm-proxy/issues"
+    "url": "https://github.com/visgotti/litellm-client/issues"
   },
   "publishConfig": {
     "access": "public",

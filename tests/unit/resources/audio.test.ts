@@ -73,20 +73,4 @@ describe('AudioResource', () => {
     expect(form.get('file')).toBeInstanceOf(Blob);
   });
 
-  it('translations.create() builds multipart', async () => {
-    await audio.translations.create({
-      file: 'fake',
-      model: 'whisper-1',
-      prompt: 'translate to english',
-      response_format: 'json',
-      temperature: 0.1,
-    } as any);
-    const arg = request.mock.calls[0][0];
-    expect(arg.path).toBe('/v1/audio/translations');
-    const form: FormData = arg.body.value;
-    expect(form.get('model')).toBe('whisper-1');
-    expect(form.get('prompt')).toBe('translate to english');
-    expect(form.get('response_format')).toBe('json');
-    expect(form.get('temperature')).toBe('0.1');
-  });
 });

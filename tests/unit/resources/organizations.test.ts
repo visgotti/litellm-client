@@ -135,6 +135,14 @@ describe('OrganizationsResource', () => {
     );
   });
 
+  it('dailyActivity works with no params (default {})', async () => {
+    await r.dailyActivity();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/organization/daily/activity');
+    expect(arg.options.query).toEqual({});
+  });
+
   it('dailyActivity GETs /organization/daily/activity with query params', async () => {
     await r.dailyActivity({
       organization_ids: 'org_1,org_2',

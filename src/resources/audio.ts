@@ -3,8 +3,6 @@ import type {
   TranscriptionCreateParams,
   Transcription,
   TranscriptionVerbose,
-  TranslationCreateParams,
-  Translation,
 } from '../types/audio';
 import type { RequestOptions } from '../types/request-options';
 import type { RequestFn, RawRequestFn } from '../client';
@@ -13,7 +11,20 @@ import { toBlob } from '../internal/form';
 class SpeechResource {
   constructor(private rawRequest: RawRequestFn) {}
 
-  /** POST /v1/audio/speech — returns audio bytes. */
+  /**
+   * Synthesize speech audio from text (text-to-speech).
+   *
+   * The response body is binary audio (e.g. mp3/wav/opus depending on
+   * `response_format`); this method buffers it into an `ArrayBuffer`. Pass it
+   * to a `Blob`, write it to disk, or stream it onward as needed.
+   *
+   * @param params - TTS request body: `model`, `input` text, `voice`, plus
+   *   optional `response_format` and `speed`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Raw audio bytes for the synthesized speech.
+   *
+   * @see https://docs.litellm.ai/docs/text_to_speech
+   */
   async create(params: SpeechCreateParams, options?: RequestOptions): Promise<ArrayBuffer> {
     const response = await this.rawRequest({
       method: 'POST',
@@ -28,7 +39,23 @@ class SpeechResource {
 class TranscriptionsResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/audio/transcriptions */
+  /**
+   * Transcribe an audio file into the original spoken language.
+   *
+   * Sent as a multipart upload. The return type narrows on `response_format`:
+   * `'json'` (default) yields a `Transcription`, `'verbose_json'` yields
+   * `TranscriptionVerbose` (with segments/words), and `'text'`/`'srt'`/`'vtt'`
+   * yield a plain `string`.
+   *
+   * @param params - Transcription request: audio `file`, `model`, optional
+   *   `language`, `prompt`, `response_format`, `temperature`, and
+   *   `timestamp_granularities[]`, plus `filename`/`contentType` for upload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `Transcription`, `TranscriptionVerbose`, or `string` depending
+   *   on the requested `response_format`.
+   *
+   * @see https://docs.litellm.ai/docs/audio_transcription
+   */
   create(
     params: TranscriptionCreateParams & { response_format?: 'json' },
     options?: RequestOptions,
@@ -71,36 +98,12 @@ class TranscriptionsResource {
   }
 }
 
-class TranslationsResource {
-  constructor(private request: RequestFn) {}
-
-  /** POST /v1/audio/translations */
-  create(params: TranslationCreateParams, options?: RequestOptions): Promise<Translation | string> {
-    const form = new FormData();
-    const blob = toBlob(params.file, params.contentType ?? 'application/octet-stream');
-    form.append('file', blob, params.filename ?? 'audio');
-    form.append('model', params.model);
-    if (params.prompt !== undefined) form.append('prompt', params.prompt);
-    if (params.response_format !== undefined)
-      form.append('response_format', params.response_format);
-    if (params.temperature !== undefined) form.append('temperature', String(params.temperature));
-    return this.request<Translation | string>({
-      method: 'POST',
-      path: '/v1/audio/translations',
-      body: { kind: 'form', value: form },
-      options,
-    });
-  }
-}
-
 export class AudioResource {
   readonly speech: SpeechResource;
   readonly transcriptions: TranscriptionsResource;
-  readonly translations: TranslationsResource;
 
   constructor(request: RequestFn, rawRequest: RawRequestFn) {
     this.speech = new SpeechResource(rawRequest);
     this.transcriptions = new TranscriptionsResource(request);
-    this.translations = new TranslationsResource(request);
   }
 }

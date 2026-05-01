@@ -108,6 +108,22 @@ describe('EvalsResource', () => {
     );
   });
 
+  it('list works with no params (default {})', async () => {
+    await evals.list();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/v1/evals');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('runs.list works with no params (default {})', async () => {
+    await evals.runs.list('eval_123');
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/v1/evals/eval_123/runs');
+    expect(arg.options.query).toEqual({});
+  });
+
   it('runs.delete DELETEs /v1/evals/{id}/runs/{run_id}', async () => {
     await evals.runs.delete('eval_123', 'run_456');
     expect(request).toHaveBeenCalledWith(

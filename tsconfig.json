@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "nodenext",
     "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": ".",
@@ -12,8 +12,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "noEmit": true
+    "moduleResolution": "nodenext",
+    "noEmit": true,
+    "types": ["node", "jest"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]

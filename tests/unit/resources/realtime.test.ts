@@ -43,4 +43,12 @@ describe('RealtimeResource', () => {
     await realtime.createClientSecret();
     expect(request.mock.calls[0][0].body).toEqual({ kind: 'json', value: {} });
   });
+
+  it('list() GETs /v1/realtime', async () => {
+    await realtime.list();
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'GET',
+      path: '/v1/realtime',
+    });
+  });
 });

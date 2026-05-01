@@ -30,7 +30,7 @@ describe('A2AResource', () => {
       params: {
         message: {
           role: 'user' as const,
-          parts: [{ type: 'text', text: 'hello' }],
+          parts: [{ kind: 'text', text: 'hello' }],
           messageId: 'm-1',
         },
       },
@@ -51,7 +51,11 @@ describe('A2AResource', () => {
       id: 'rpc-2',
       method: 'message/send',
       params: {
-        message: { role: 'user', parts: [{ type: 'text', text: 'hi' }] },
+        message: {
+          role: 'user',
+          parts: [{ kind: 'text', text: 'hi' }],
+          messageId: 'm-2',
+        },
       },
     });
     const arg = request.mock.calls[0][0];
@@ -62,7 +66,16 @@ describe('A2AResource', () => {
 
   it('sendMessageV1 POSTs /v1/a2a/{agent_id}/message/send', async () => {
     await r.sendMessageV1('a1', {
-      params: { message: { role: 'user', parts: [{ type: 'text', text: 'hi' }] } },
+      jsonrpc: '2.0',
+      id: 'rpc-3',
+      method: 'message/send',
+      params: {
+        message: {
+          role: 'user',
+          parts: [{ kind: 'text', text: 'hi' }],
+          messageId: 'm-3',
+        },
+      },
     });
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({

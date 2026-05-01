@@ -56,4 +56,30 @@ describe('CompletionsResource', () => {
     expect(request).toHaveBeenCalled();
     expect(streamRequest).not.toHaveBeenCalled();
   });
+
+  it('engines.create() POSTs to /engines/{engineId}/completions', async () => {
+    await completions.engines.create('text-davinci-003', {
+      model: 'text-davinci-003',
+      prompt: 'Hi',
+    } as any);
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'POST',
+      path: '/engines/text-davinci-003/completions',
+    });
+  });
+
+  it('engines.create() with stream=true routes to streamRequest', async () => {
+    const fake = new Stream<CompletionChunk>(
+      (async function* () {})(),
+      new AbortController(),
+    );
+    streamRequest.mockResolvedValueOnce(fake);
+    const r = await completions.engines.create('e1', {
+      model: 'm',
+      prompt: 'p',
+      stream: true,
+    } as any);
+    expect(streamRequest.mock.calls[0][0].path).toBe('/engines/e1/completions');
+    expect(r).toBe(fake);
+  });
 });

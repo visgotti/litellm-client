@@ -158,56 +158,118 @@ describe('AnthropicResource', () => {
   });
 
   describe('skills', () => {
-    it('creates a skill', async () => {
-      request.mockResolvedValueOnce({ id: 'sk_1', name: 'tester' });
-      const result = await anthropic.skills.create({ name: 'tester', description: 'd' });
-      expect(request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'POST',
-          path: '/v1/skills',
-          body: { kind: 'json', value: { name: 'tester', description: 'd' } },
-        }),
-      );
+    it('creates a skill via multipart/form-data with display_title and files[]', async () => {
+      request.mockResolvedValueOnce({
+        id: 'sk_1',
+        type: 'skill',
+        display_title: 'My Skill',
+        latest_version_id: 'skillver_01xyz',
+      });
+      const result = await anthropic.skills.create({
+        display_title: 'My Skill',
+        files: 'SKILL.md contents',
+        filename: 'SKILL.md',
+        contentType: 'text/markdown',
+        model: 'claude-opus-4-5',
+      });
+
+      const call = request.mock.calls[0][0];
+      expect(call.method).toBe('POST');
+      expect(call.path).toBe('/v1/skills');
+      expect(call.body.kind).toBe('form');
+
+      const form: FormData = call.body.value;
+      expect(form).toBeInstanceOf(FormData);
+      expect(form.get('display_title')).toBe('My Skill');
+      expect(form.get('model')).toBe('claude-opus-4-5');
+      const files = form.getAll('files[]');
+      expect(files).toHaveLength(1);
+      expect(files[0]).toBeInstanceOf(Blob);
+
+      expect(call.options.headers['anthropic-beta']).toBe('skills-2025-10-02');
+      expect(call.options.query).toEqual({ beta: true, model: 'claude-opus-4-5' });
       expect(result.id).toBe('sk_1');
+      expect(result.display_title).toBe('My Skill');
+      expect(result.latest_version_id).toBe('skillver_01xyz');
     });
 
-    it('lists skills with query params', async () => {
+    it('creates a skill defaulting filename to skill.zip when not provided', async () => {
+      request.mockResolvedValueOnce({ id: 'sk_4', display_title: 'Default' });
+      await anthropic.skills.create({
+        display_title: 'Default',
+        files: new Uint8Array([1, 2, 3]),
+      });
+      const form: FormData = request.mock.calls[0][0].body.value;
+      const files = form.getAll('files[]');
+      expect(files).toHaveLength(1);
+      // Blob exposes the filename via the third arg to FormData.append; we only check it's a Blob
+      expect(files[0]).toBeInstanceOf(Blob);
+    });
+
+    it('creates a skill from a single file upload object', async () => {
+      request.mockResolvedValueOnce({ id: 'sk_3', display_title: 'Single' });
+      await anthropic.skills.create({
+        display_title: 'Single',
+        files: { file: 'SKILL contents', filename: 'SKILL.md', contentType: 'text/markdown' },
+      });
+      const form: FormData = request.mock.calls[0][0].body.value;
+      const files = form.getAll('files[]');
+      expect(files).toHaveLength(1);
+      expect(files[0]).toBeInstanceOf(Blob);
+    });
+
+    it('creates a skill from an array of files appending each as files[]', async () => {
+      request.mockResolvedValueOnce({ id: 'sk_2', display_title: 'Multi' });
+      await anthropic.skills.create({
+        display_title: 'Multi',
+        files: [
+          { file: 'SKILL contents', filename: 'SKILL.md', contentType: 'text/markdown' },
+          { file: new Uint8Array([1, 2, 3]), filename: 'helper.bin' },
+        ],
+      });
+      const form: FormData = request.mock.calls[0][0].body.value;
+      const files = form.getAll('files[]');
+      expect(files).toHaveLength(2);
+    });
+
+    it('lists skills with query params and beta header', async () => {
       request.mockResolvedValueOnce({ data: [] });
       await anthropic.skills.list({ limit: 10, cursor: 'c1' });
       const call = request.mock.calls[0][0];
       expect(call.method).toBe('GET');
       expect(call.path).toBe('/v1/skills');
-      expect(call.options.query).toEqual({ limit: 10, cursor: 'c1' });
+      expect(call.options.query).toEqual({ beta: true, limit: 10, cursor: 'c1' });
+      expect(call.options.headers['anthropic-beta']).toBe('skills-2025-10-02');
     });
 
-    it('lists skills with no params', async () => {
+    it('lists skills with no params (still sends beta=true)', async () => {
       request.mockResolvedValueOnce({ data: [] });
       await anthropic.skills.list();
-      expect(request).toHaveBeenCalledWith(
-        expect.objectContaining({ method: 'GET', path: '/v1/skills' }),
-      );
+      const call = request.mock.calls[0][0];
+      expect(call.method).toBe('GET');
+      expect(call.path).toBe('/v1/skills');
+      expect(call.options.query).toEqual({ beta: true });
+      expect(call.options.headers['anthropic-beta']).toBe('skills-2025-10-02');
     });
 
-    it('retrieves a skill by id (encoded)', async () => {
-      request.mockResolvedValueOnce({ id: 'sk 1', name: 'n' });
+    it('retrieves a skill by id (encoded) with beta query and header', async () => {
+      request.mockResolvedValueOnce({ id: 'sk 1', display_title: 'n' });
       await anthropic.skills.retrieve('sk 1');
-      expect(request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'GET',
-          path: '/v1/skills/sk%201',
-        }),
-      );
+      const call = request.mock.calls[0][0];
+      expect(call.method).toBe('GET');
+      expect(call.path).toBe('/v1/skills/sk%201');
+      expect(call.options.query).toEqual({ beta: true });
+      expect(call.options.headers['anthropic-beta']).toBe('skills-2025-10-02');
     });
 
-    it('deletes a skill', async () => {
+    it('deletes a skill with beta query and header', async () => {
       request.mockResolvedValueOnce({ id: 'sk_1', deleted: true });
       const result = await anthropic.skills.delete('sk_1');
-      expect(request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: 'DELETE',
-          path: '/v1/skills/sk_1',
-        }),
-      );
+      const call = request.mock.calls[0][0];
+      expect(call.method).toBe('DELETE');
+      expect(call.path).toBe('/v1/skills/sk_1');
+      expect(call.options.query).toEqual({ beta: true });
+      expect(call.options.headers['anthropic-beta']).toBe('skills-2025-10-02');
       expect(result.deleted).toBe(true);
     });
   });

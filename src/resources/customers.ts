@@ -22,7 +22,15 @@ import type { RequestFn } from '../client';
 export class CustomersResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /customer/new */
+  /**
+   * Create a new end-customer record (`POST /customer/new`).
+   *
+   * @param params - End-customer attributes (id, alias, budget, allowed_model_region, etc.)
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created end-customer record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   create(
     params: CustomerCreateParams,
     options?: RequestOptions,
@@ -35,7 +43,15 @@ export class CustomersResource {
     });
   }
 
-  /** POST /customer/update */
+  /**
+   * Update an existing end-customer (`POST /customer/update`).
+   *
+   * @param params - End-customer id plus fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated end-customer record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   update(
     params: CustomerUpdateParams,
     options?: RequestOptions,
@@ -48,7 +64,15 @@ export class CustomersResource {
     });
   }
 
-  /** POST /customer/delete */
+  /**
+   * Delete one or more end-customers (`POST /customer/delete`).
+   *
+   * @param params - End-customer ids to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Deletion result with counts and any errors.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   delete(
     params: CustomerDeleteParams,
     options?: RequestOptions,
@@ -61,7 +85,15 @@ export class CustomersResource {
     });
   }
 
-  /** GET /customer/info?end_user_id=... */
+  /**
+   * Fetch info for a single end-customer (`GET /customer/info?end_user_id=...`).
+   *
+   * @param endUserId - The end-customer id to look up.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The end-customer record including budget and usage info.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   info(endUserId: string, options?: RequestOptions): Promise<CustomerInfoResponse> {
     return this.request<CustomerInfoResponse>({
       method: 'GET',
@@ -73,7 +105,14 @@ export class CustomersResource {
     });
   }
 
-  /** GET /customer/list */
+  /**
+   * List all end-customers (`GET /customer/list`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The full list of end-customer records.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   list(options?: RequestOptions): Promise<CustomerListResponse> {
     return this.request<CustomerListResponse>({
       method: 'GET',
@@ -82,7 +121,15 @@ export class CustomersResource {
     });
   }
 
-  /** POST /customer/block */
+  /**
+   * Block an end-customer from making requests (`POST /customer/block`).
+   *
+   * @param params - The end-customer to block.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   block(params: CustomerBlockParams, options?: RequestOptions): Promise<unknown> {
     return this.request({
       method: 'POST',
@@ -92,7 +139,15 @@ export class CustomersResource {
     });
   }
 
-  /** POST /customer/unblock */
+  /**
+   * Unblock a previously blocked end-customer (`POST /customer/unblock`).
+   *
+   * @param params - The end-customer to unblock.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   unblock(params: CustomerUnblockParams, options?: RequestOptions): Promise<unknown> {
     return this.request({
       method: 'POST',
@@ -102,7 +157,15 @@ export class CustomersResource {
     });
   }
 
-  /** GET /customer/daily/activity */
+  /**
+   * Daily activity for end-customers across a date range (`GET /customer/daily/activity`).
+   *
+   * @param params - Date range plus optional end-customer filter.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Daily aggregates of requests, tokens, and spend.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/customers
+   */
   dailyActivity(
     params: CustomerDailyActivityParams,
     options?: RequestOptions,

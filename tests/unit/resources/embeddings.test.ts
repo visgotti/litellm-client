@@ -26,4 +26,15 @@ describe('EmbeddingsResource', () => {
       },
     });
   });
+
+  it('engines.create() POSTs to /engines/{engineId}/embeddings (encoded)', async () => {
+    await embeddings.engines.create('text embedding', {
+      model: 'text-embedding-3-small',
+      input: 'hi',
+    } as any);
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'POST',
+      path: '/engines/text%20embedding/embeddings',
+    });
+  });
 });

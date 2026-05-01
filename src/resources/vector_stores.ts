@@ -33,7 +33,20 @@ import type { RequestFn } from '../client';
 class VectorStoreFilesResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/vector_stores/{id}/files */
+  /**
+   * Attach an uploaded file to a vector store.
+   *
+   * The `params.file_id` must reference a file uploaded via `files.create()`.
+   * The vector store will index the file's content for retrieval.
+   *
+   * @param vectorStoreId - The id of the target vector store.
+   * @param params - Attachment params: `file_id`, plus optional
+   *   `chunking_strategy` and `attributes`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The created `VectorStoreFileObject` with indexing status.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   create(
     vectorStoreId: string,
     params: VectorStoreFileCreateParams,
@@ -47,7 +60,17 @@ class VectorStoreFilesResource {
     });
   }
 
-  /** GET /v1/vector_stores/{id}/files */
+  /**
+   * List files attached to a vector store (paginated).
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param params - Pagination/filter params: `after`, `before`, `limit`,
+   *   `order`, `filter` by status.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreFileListResponse` page of files.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   list(
     vectorStoreId: string,
     params: VectorStoreFileListParams = {},
@@ -66,7 +89,16 @@ class VectorStoreFilesResource {
     });
   }
 
-  /** GET /v1/vector_stores/{id}/files/{file_id} */
+  /**
+   * Retrieve a specific file attached to a vector store.
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param fileId - The id of the attached file.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `VectorStoreFileObject` for the attachment.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   retrieve(
     vectorStoreId: string,
     fileId: string,
@@ -79,7 +111,19 @@ class VectorStoreFilesResource {
     });
   }
 
-  /** GET /v1/vector_stores/{id}/files/{file_id}/content */
+  /**
+   * Retrieve the parsed/chunked content for an attached file.
+   *
+   * Returns the indexed text chunks, useful for inspecting how the vector
+   * store split a document.
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param fileId - The id of the attached file.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreFileContentResponse` containing chunked content.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   content(
     vectorStoreId: string,
     fileId: string,
@@ -92,7 +136,17 @@ class VectorStoreFilesResource {
     });
   }
 
-  /** POST /v1/vector_stores/{id}/files/{file_id} */
+  /**
+   * Update metadata/attributes on an attached file.
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param fileId - The id of the attached file to update.
+   * @param params - Fields to update (e.g. `attributes`).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated `VectorStoreFileObject`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   update(
     vectorStoreId: string,
     fileId: string,
@@ -107,7 +161,18 @@ class VectorStoreFilesResource {
     });
   }
 
-  /** DELETE /v1/vector_stores/{id}/files/{file_id} */
+  /**
+   * Detach a file from a vector store.
+   *
+   * The underlying file (uploaded via `files.create`) is unaffected.
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param fileId - The id of the attached file to detach.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreFileDeletedResponse` confirming detachment.
+   *
+   * @see https://docs.litellm.ai/docs/vector_store_files
+   */
   delete(
     vectorStoreId: string,
     fileId: string,
@@ -129,7 +194,18 @@ class VectorStoreFilesResource {
 class VectorStoreManagementResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /vector_store/new */
+  /**
+   * Register a new managed vector store on the proxy.
+   *
+   * Creates a record in LiteLLM's database-backed vector store registry,
+   * which is distinct from the OpenAI-shape `/v1/vector_stores` resources.
+   *
+   * @param params - Management create params (provider, credentials, name, etc.).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreManagementCreateResponse` describing the registry entry.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   create(
     params: VectorStoreManagementCreateParams,
     options?: RequestOptions,
@@ -142,7 +218,15 @@ class VectorStoreManagementResource {
     });
   }
 
-  /** GET /vector_store/list */
+  /**
+   * List managed vector stores registered on the proxy.
+   *
+   * @param params - Optional pagination/filter params.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreManagementListResponse` of registry entries.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   list(
     params: VectorStoreManagementListParams = {},
     options?: RequestOptions,
@@ -160,7 +244,15 @@ class VectorStoreManagementResource {
     });
   }
 
-  /** POST /vector_store/info */
+  /**
+   * Fetch detailed info for a single managed vector store.
+   *
+   * @param params - Identifies the registry entry to look up.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreManagementInfoResponse`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   info(
     params: VectorStoreManagementInfoParams,
     options?: RequestOptions,
@@ -173,7 +265,15 @@ class VectorStoreManagementResource {
     });
   }
 
-  /** POST /vector_store/update */
+  /**
+   * Update a managed vector store registry entry.
+   *
+   * @param params - Update payload (id plus fields to change).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreManagementUpdateResponse`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   update(
     params: VectorStoreManagementUpdateParams,
     options?: RequestOptions,
@@ -186,7 +286,15 @@ class VectorStoreManagementResource {
     });
   }
 
-  /** POST /vector_store/delete */
+  /**
+   * Remove a managed vector store registry entry.
+   *
+   * @param params - Identifies the registry entry to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreManagementDeleteResponse` confirming removal.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   delete(
     params: VectorStoreManagementDeleteParams,
     options?: RequestOptions,
@@ -203,7 +311,18 @@ class VectorStoreManagementResource {
 class VectorStoreIndexesResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/indexes */
+  /**
+   * Create a new vector index.
+   *
+   * Used by index-based vector providers exposed through the proxy under
+   * `/v1/indexes`.
+   *
+   * @param params - Index creation parameters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `IndexCreateResponse` describing the new index.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   create(params: IndexCreateParams, options?: RequestOptions): Promise<IndexCreateResponse> {
     return this.request<IndexCreateResponse>({
       method: 'POST',
@@ -225,7 +344,16 @@ export class VectorStoresResource {
     this.indexes = new VectorStoreIndexesResource(request);
   }
 
-  /** POST /v1/vector_stores */
+  /**
+   * Create a new OpenAI-shape vector store.
+   *
+   * @param params - Vector store config: optional `name`, `file_ids`,
+   *   `chunking_strategy`, `expires_after`, `metadata`. Defaults to `{}`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `VectorStoreObject`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   create(
     params: VectorStoreCreateParams = {},
     options?: RequestOptions,
@@ -238,7 +366,15 @@ export class VectorStoresResource {
     });
   }
 
-  /** GET /v1/vector_stores */
+  /**
+   * List vector stores (paginated).
+   *
+   * @param params - Pagination filters: `after`, `before`, `limit`, `order`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreListResponse` page of vector stores.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   list(
     params: VectorStoreListParams = {},
     options?: RequestOptions,
@@ -256,7 +392,15 @@ export class VectorStoresResource {
     });
   }
 
-  /** GET /v1/vector_stores/{id} */
+  /**
+   * Retrieve a vector store by id.
+   *
+   * @param vectorStoreId - The id of the vector store.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `VectorStoreObject`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   retrieve(vectorStoreId: string, options?: RequestOptions): Promise<VectorStoreObject> {
     return this.request<VectorStoreObject>({
       method: 'GET',
@@ -265,7 +409,16 @@ export class VectorStoresResource {
     });
   }
 
-  /** POST /v1/vector_stores/{id} */
+  /**
+   * Update a vector store's config or metadata.
+   *
+   * @param vectorStoreId - The id of the vector store to update.
+   * @param params - Fields to update (e.g. `name`, `expires_after`, `metadata`).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated `VectorStoreObject`.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   update(
     vectorStoreId: string,
     params: VectorStoreUpdateParams,
@@ -279,7 +432,15 @@ export class VectorStoresResource {
     });
   }
 
-  /** DELETE /v1/vector_stores/{id} */
+  /**
+   * Delete a vector store and its file attachments.
+   *
+   * @param vectorStoreId - The id of the vector store to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreDeletedResponse` confirming removal.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/create
+   */
   delete(
     vectorStoreId: string,
     options?: RequestOptions,
@@ -291,7 +452,17 @@ export class VectorStoresResource {
     });
   }
 
-  /** POST /v1/vector_stores/{id}/search */
+  /**
+   * Run a similarity search against a vector store.
+   *
+   * @param vectorStoreId - The id of the vector store to search.
+   * @param params - Search request: `query`, optional `max_num_results`,
+   *   `filters`, `ranking_options`, `rewrite_query`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `VectorStoreSearchResponse` with ranked matches.
+   *
+   * @see https://docs.litellm.ai/docs/vector_stores/search
+   */
   search(
     vectorStoreId: string,
     params: VectorStoreSearchParams,

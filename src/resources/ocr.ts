@@ -15,7 +15,22 @@ function isFileParams(p: OCRCreateParams): p is OCRCreateFileParams {
 export class OcrResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/ocr — accepts JSON `document` or multipart `file` upload. */
+  /**
+   * Run OCR on a document or image.
+   *
+   * Accepts two shapes: a JSON body referencing a remote `document` URL/id,
+   * or a multipart upload when a `file` is supplied directly. The method
+   * detects the variant via `params.file` and serializes accordingly.
+   *
+   * @param params - OCR request: either `OCRCreateJSONParams` (with
+   *   `document`) or `OCRCreateFileParams` (with `file`, `filename`,
+   *   `contentType`). Optional fields include `pages`, `image_limit`,
+   *   `image_min_size`, `include_image_base64`, `custom_llm_provider`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `OCRResponse` containing extracted text and (optionally) images.
+   *
+   * @see https://docs.litellm.ai/docs/ocr
+   */
   create(params: OCRCreateParams, options?: RequestOptions): Promise<OCRResponse> {
     if (isFileParams(params)) {
       const form = new FormData();

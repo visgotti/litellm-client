@@ -1,14 +1,11 @@
 import type {
   AssistantObject,
   AssistantCreateParams,
-  AssistantUpdateParams,
   AssistantListParams,
   AssistantListResponse,
   AssistantDeletedResponse,
   ThreadObject,
   ThreadCreateParams,
-  ThreadUpdateParams,
-  ThreadDeletedResponse,
   ThreadMessageObject,
   ThreadMessageCreateParams,
   ThreadMessageListResponse,
@@ -30,6 +27,19 @@ function withBeta(options?: RequestOptions): RequestOptions {
 class MessagesResource {
   constructor(private request: RequestFn) {}
 
+  /**
+   * Append a message to an existing thread.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param threadId - The id of the thread to append to.
+   * @param params - Message body: `role`, `content`, optional `attachments`,
+   *   `metadata`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The created `ThreadMessageObject`.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   create(
     threadId: string,
     params: ThreadMessageCreateParams,
@@ -43,6 +53,18 @@ class MessagesResource {
     });
   }
 
+  /**
+   * List messages on a thread (paginated).
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param threadId - The id of the thread whose messages to list.
+   * @param params - Pagination filters: `after`, `before`, `limit`, `order`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `ThreadMessageListResponse` page of messages.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   list(
     threadId: string,
     params: { after?: string; before?: string; limit?: number; order?: 'asc' | 'desc' } = {},
@@ -65,6 +87,19 @@ class MessagesResource {
 class RunsResource {
   constructor(private request: RequestFn) {}
 
+  /**
+   * Start a new run on a thread using a configured assistant.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param threadId - The id of the thread to run on.
+   * @param params - Run parameters: `assistant_id`, plus optional overrides
+   *   for `model`, `instructions`, `tools`, `metadata`, etc.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `RunObject`.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   create(
     threadId: string,
     params: RunCreateParams,
@@ -78,21 +113,6 @@ class RunsResource {
     });
   }
 
-  retrieve(threadId: string, runId: string, options?: RequestOptions): Promise<RunObject> {
-    return this.request<RunObject>({
-      method: 'GET',
-      path: `/v1/threads/${encodeURIComponent(threadId)}/runs/${encodeURIComponent(runId)}`,
-      options: withBeta(options),
-    });
-  }
-
-  cancel(threadId: string, runId: string, options?: RequestOptions): Promise<RunObject> {
-    return this.request<RunObject>({
-      method: 'POST',
-      path: `/v1/threads/${encodeURIComponent(threadId)}/runs/${encodeURIComponent(runId)}/cancel`,
-      options: withBeta(options),
-    });
-  }
 }
 
 class ThreadsResource {
@@ -104,6 +124,18 @@ class ThreadsResource {
     this.runs = new RunsResource(request);
   }
 
+  /**
+   * Create a new thread, optionally seeded with messages.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param params - Thread creation params: optional initial `messages`,
+   *   `tool_resources`, `metadata`. Defaults to `{}` for an empty thread.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `ThreadObject`.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   create(params: ThreadCreateParams = {}, options?: RequestOptions): Promise<ThreadObject> {
     return this.request<ThreadObject>({
       method: 'POST',
@@ -113,6 +145,17 @@ class ThreadsResource {
     });
   }
 
+  /**
+   * Retrieve a thread by id.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param threadId - The id of the thread.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `ThreadObject`.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   retrieve(threadId: string, options?: RequestOptions): Promise<ThreadObject> {
     return this.request<ThreadObject>({
       method: 'GET',
@@ -121,28 +164,20 @@ class ThreadsResource {
     });
   }
 
-  update(
-    threadId: string,
-    params: ThreadUpdateParams,
-    options?: RequestOptions,
-  ): Promise<ThreadObject> {
-    return this.request<ThreadObject>({
-      method: 'POST',
-      path: `/v1/threads/${encodeURIComponent(threadId)}`,
-      body: { kind: 'json', value: params },
-      options: withBeta(options),
-    });
-  }
-
-  delete(threadId: string, options?: RequestOptions): Promise<ThreadDeletedResponse> {
-    return this.request<ThreadDeletedResponse>({
-      method: 'DELETE',
-      path: `/v1/threads/${encodeURIComponent(threadId)}`,
-      options: withBeta(options),
-    });
-  }
 }
 
+/**
+ * Resource for managing OpenAI Assistants (assistants, threads, messages, runs).
+ *
+ * @deprecated The OpenAI Assistants API is **deprecated** and will shut down
+ * on **August 26, 2026**. New integrations should use {@link ResponsesResource}
+ * (`client.responses`) instead. The migration guide:
+ * https://platform.openai.com/docs/assistants/migration. This resource is kept
+ * for backwards-compatibility with existing code; expect the upstream endpoint
+ * to stop responding after the sunset date.
+ *
+ * @see https://docs.litellm.ai/docs/assistants
+ */
 export class AssistantsResource {
   readonly threads: ThreadsResource;
 
@@ -150,6 +185,18 @@ export class AssistantsResource {
     this.threads = new ThreadsResource(request);
   }
 
+  /**
+   * Create a new assistant.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param params - Assistant config: `model`, plus optional `name`,
+   *   `instructions`, `tools`, `tool_resources`, and `metadata`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `AssistantObject`.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   create(params: AssistantCreateParams, options?: RequestOptions): Promise<AssistantObject> {
     return this.request<AssistantObject>({
       method: 'POST',
@@ -159,6 +206,17 @@ export class AssistantsResource {
     });
   }
 
+  /**
+   * List assistants (paginated).
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param params - Pagination filters: `after`, `before`, `limit`, `order`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `AssistantListResponse` page of assistants.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   list(
     params: AssistantListParams = {},
     options?: RequestOptions,
@@ -176,27 +234,17 @@ export class AssistantsResource {
     });
   }
 
-  retrieve(assistantId: string, options?: RequestOptions): Promise<AssistantObject> {
-    return this.request<AssistantObject>({
-      method: 'GET',
-      path: `/v1/assistants/${encodeURIComponent(assistantId)}`,
-      options: withBeta(options),
-    });
-  }
-
-  update(
-    assistantId: string,
-    params: AssistantUpdateParams,
-    options?: RequestOptions,
-  ): Promise<AssistantObject> {
-    return this.request<AssistantObject>({
-      method: 'POST',
-      path: `/v1/assistants/${encodeURIComponent(assistantId)}`,
-      body: { kind: 'json', value: params },
-      options: withBeta(options),
-    });
-  }
-
+  /**
+   * Delete an assistant.
+   *
+   * Automatically sets the `OpenAI-Beta: assistants=v2` header.
+   *
+   * @param assistantId - The id of the assistant to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `AssistantDeletedResponse` confirming removal.
+   *
+   * @see https://docs.litellm.ai/docs/assistants
+   */
   delete(assistantId: string, options?: RequestOptions): Promise<AssistantDeletedResponse> {
     return this.request<AssistantDeletedResponse>({
       method: 'DELETE',

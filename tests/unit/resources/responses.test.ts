@@ -99,4 +99,13 @@ describe('ResponsesResource', () => {
     await responses.compact();
     expect(request.mock.calls[1][0].body.value).toEqual({});
   });
+
+  it('list() GETs /v1/responses with optional pagination query', async () => {
+    await responses.list({ limit: 5 });
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'GET',
+      path: '/v1/responses',
+    });
+    expect(request.mock.calls[0][0].options.query).toMatchObject({ limit: 5 });
+  });
 });

@@ -111,6 +111,7 @@ export type OpenAIModel =
 
 export type AnthropicModel =
   // Claude 4.x
+  | 'claude-opus-4-7'
   | 'claude-opus-4-6-20260205'
   | 'claude-opus-4-6'
   | 'claude-sonnet-4-6'
@@ -123,6 +124,8 @@ export type AnthropicModel =
   | 'claude-opus-4'
   | 'claude-sonnet-4-20250514'
   | 'claude-sonnet-4'
+  | 'claude-haiku-4-5-20251001'
+  | 'claude-haiku-4-5'
   | 'claude-4'
   // Claude 3.x
   | 'claude-3-7-sonnet-20250219'
@@ -145,17 +148,22 @@ export type AnthropicModel =
 export type GeminiModel =
   | 'gemini/gemini-2.5-pro'
   | 'gemini/gemini-2.5-flash'
+  | 'gemini/gemini-2.5-flash-lite'
   | 'gemini/gemini-2.0-flash'
   | 'gemini/gemini-2.0-flash-lite'
   | 'gemini/gemini-1.5-pro'
   | 'gemini/gemini-1.5-flash'
-  | 'gemini/gemini-1.0-pro';
+  | 'gemini/gemini-1.0-pro'
+  // Embedding models
+  | 'gemini/gemini-embedding-001'
+  | 'gemini/text-embedding-004';
 
 // ─── Vertex AI (Google Cloud) ────────────────────────────────────────────────
 
 export type VertexAIModel =
   | 'vertex_ai/gemini-2.5-pro'
   | 'vertex_ai/gemini-2.5-flash'
+  | 'vertex_ai/gemini-2.5-flash-lite'
   | 'vertex_ai/gemini-2.0-flash'
   | 'vertex_ai/gemini-2.0-flash-lite'
   | 'vertex_ai/gemini-1.5-pro'

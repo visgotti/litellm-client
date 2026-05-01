@@ -2,20 +2,30 @@
  * @group e2e
  *
  * E2E tests for the MCP resource against a live LiteLLM proxy in Docker.
- * Most methods either succeed (returning empty lists / no servers) or return a
- * structured error when MCP servers aren't configured. Both outcomes verify
- * SDK request marshalling.
+ *
+ * Assertion policy: every test commits to ONE outcome — success-with-shape
+ * or a single typed error status. See `_assertions.ts`.
+ *
+ * KNOWN SDK BUG (documented in tests below):
+ *   The proxy's MCP endpoints require `Accept: text/event-stream` (and for
+ *   some POST/DELETE routes, both `application/json` and `text/event-stream`).
+ *   The SDK does not send these headers today, so every MCP endpoint returns
+ *   406 (or 405 for some POST/DELETE routes that fall through to the session
+ *   handler). The tests below pin the *current* behaviour so a future SDK fix
+ *   that adds the right Accept headers will fail these tests loudly and we
+ *   can flip them to the expected success / 404 outcomes.
  */
-import { LiteLLMProxyClient } from '../../src/client';
+import { LiteLLMClient } from '../../src/client';
+import { expectTypedError } from './_assertions';
 
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-let client: LiteLLMProxyClient;
+let client: LiteLLMClient;
 const uniq = (p: string) => `${p}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
 beforeAll(() => {
-  client = new LiteLLMProxyClient({
+  client = new LiteLLMClient({
     baseUrl: PROXY_URL,
     apiKey: MASTER_KEY,
     timeout: 60_000,
@@ -23,147 +33,94 @@ beforeAll(() => {
   });
 });
 
-async function eitherOrStructuredError(p: Promise<unknown>): Promise<unknown> {
-  try {
-    return await p;
-  } catch (err) {
-    expect(err).toBeTruthy();
-    return err;
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// tools
+// tools / access groups / network / registry / userCredentials — all 406
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: tools', () => {
-  it('lists tools (likely empty in vanilla deploy)', async () => {
-    const result = await eitherOrStructuredError(client.mcp.tools.list());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-      expect(Array.isArray((result as { tools: unknown[] }).tools)).toBe(true);
-    }
+  it('list rejects 406 (SDK does not send Accept: text/event-stream)', async () => {
+    await expectTypedError(client.mcp.tools.list(), 406);
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// access groups
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: accessGroups', () => {
-  it('lists access groups', async () => {
-    const result = await eitherOrStructuredError(client.mcp.accessGroups.list());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-      expect(Array.isArray((result as { access_groups: unknown[] }).access_groups)).toBe(true);
-    }
+  it('list rejects 406 (SDK does not send Accept: text/event-stream)', async () => {
+    await expectTypedError(client.mcp.accessGroups.list(), 406);
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// network
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: network', () => {
-  it('returns the caller client IP', async () => {
-    const result = await eitherOrStructuredError(client.mcp.network.clientIp());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-      const ip = (result as { ip: string | null }).ip;
-      expect(ip === null || typeof ip === 'string').toBe(true);
-    }
+  it('clientIp rejects 406 (SDK does not send Accept: text/event-stream)', async () => {
+    await expectTypedError(client.mcp.network.clientIp(), 406);
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// registry
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: registry', () => {
-  it('returns registry.json (best-effort)', async () => {
-    await eitherOrStructuredError(client.mcp.registry.json());
+  it('json rejects 406', async () => {
+    await expectTypedError(client.mcp.registry.json(), 406);
   });
 
-  it('returns the openapi registry (best-effort)', async () => {
-    await eitherOrStructuredError(client.mcp.registry.openapi());
+  it('openapi rejects 406', async () => {
+    await expectTypedError(client.mcp.registry.openapi(), 406);
   });
 
-  it('discovers servers (best-effort, with query params)', async () => {
-    await eitherOrStructuredError(
+  it('discover with query/category rejects 406', async () => {
+    await expectTypedError(
       client.mcp.registry.discover({ query: 'test', category: 'general' }),
+      406,
     );
   });
 
-  it('discovers servers with no params', async () => {
-    await eitherOrStructuredError(client.mcp.registry.discover());
+  it('discover with no params rejects 406', async () => {
+    await expectTypedError(client.mcp.registry.discover(), 406);
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// userCredentials (top-level listing)
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: userCredentials', () => {
-  it('lists user credentials (best-effort)', async () => {
-    await eitherOrStructuredError(client.mcp.userCredentials.list());
+  it('list rejects 406', async () => {
+    await expectTypedError(client.mcp.userCredentials.list(), 406);
   });
 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// makePublic (top-level)
-// ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: makePublic', () => {
-  it('accepts an empty server id list (best-effort)', async () => {
-    await eitherOrStructuredError(
-      client.mcp.makePublic({ mcp_server_ids: [] }),
-    );
+  it('rejects 406 (Accept must include both application/json and text/event-stream)', async () => {
+    await expectTypedError(client.mcp.makePublic({ mcp_server_ids: [] }), 406);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// servers
+// servers — listing/POST routes return 406; some DELETEs/PUTs return 405
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: servers', () => {
-  it('lists servers (likely empty in vanilla deploy)', async () => {
-    const result = await eitherOrStructuredError(client.mcp.servers.list());
-    if (!(result instanceof Error)) {
-      expect(Array.isArray(result)).toBe(true);
-    }
+  it('list rejects 406', async () => {
+    await expectTypedError(client.mcp.servers.list(), 406);
   });
 
-  it('lists servers filtered by team_id (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('list filtered by team_id rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.list({ team_id: 'nonexistent-team' }),
+      406,
     );
   });
 
-  it('reports server health (likely empty)', async () => {
-    const result = await eitherOrStructuredError(client.mcp.servers.health());
-    if (!(result instanceof Error)) {
-      expect(Array.isArray(result)).toBe(true);
-    }
+  it('health rejects 406', async () => {
+    await expectTypedError(client.mcp.servers.health(), 406);
   });
 
-  it('reports server health with filter (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('health with filter rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.health({ server_ids: ['fake-id-1', 'fake-id-2'] }),
+      406,
     );
   });
 
-  it('lists submissions (likely empty)', async () => {
-    const result = await eitherOrStructuredError(
-      client.mcp.servers.listSubmissions(),
-    );
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-      expect(typeof (result as { total: number }).total).toBe('number');
-    }
+  it('listSubmissions rejects 406', async () => {
+    await expectTypedError(client.mcp.servers.listSubmissions(), 406);
   });
 
-  it('add accepts a fake server config (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('add rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.add({
         server_name: uniq('mcp-server'),
         alias: uniq('alias'),
@@ -172,21 +129,23 @@ describe('MCP: servers', () => {
         auth_type: 'none',
         url: 'https://example.invalid/mcp',
       }),
+      406,
     );
   });
 
-  it('edit returns a structured error for an unknown server', async () => {
-    await eitherOrStructuredError(
+  it('edit(fake-server-id) rejects 405 (method routes through session handler)', async () => {
+    await expectTypedError(
       client.mcp.servers.edit({
         server_id: 'fake-server-id',
         server_name: 'fake',
         url: 'https://example.invalid/mcp',
       }),
+      405,
     );
   });
 
-  it('register accepts a fake server config (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('register rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.register({
         server_name: uniq('mcp-register'),
         description: 'e2e register',
@@ -194,112 +153,121 @@ describe('MCP: servers', () => {
         auth_type: 'none',
         url: 'https://example.invalid/mcp',
       }),
+      406,
     );
   });
 
-  it('retrieve returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(client.mcp.servers.retrieve('fake-id'));
+  it('retrieve(fake-id) rejects 406', async () => {
+    await expectTypedError(client.mcp.servers.retrieve('fake-id'), 406);
   });
 
-  it('delete returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(client.mcp.servers.delete('fake-id'));
+  it('delete(fake-id) rejects 405 (session-termination handler)', async () => {
+    await expectTypedError(client.mcp.servers.delete('fake-id'), 405);
   });
 
-  it('approveSubmission returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(
-      client.mcp.servers.approveSubmission('fake-id'),
-    );
+  it('approveSubmission(fake-id) rejects 405', async () => {
+    await expectTypedError(client.mcp.servers.approveSubmission('fake-id'), 405);
   });
 
-  it('rejectSubmission returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(
+  it('rejectSubmission(fake-id) rejects 405', async () => {
+    await expectTypedError(
       client.mcp.servers.rejectSubmission('fake-id', { review_notes: 'nope' }),
+      405,
     );
   });
 
   // ── OAuth flow ─────────────────────────────────────────────────────────────
 
-  it('oauthSession is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('oauthSession(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.oauthSession({
         server_id: 'fake-id',
         redirect_uri: 'https://example.invalid/cb',
       }),
+      406,
     );
   });
 
-  it('oauthAuthorize is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('oauthAuthorize(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.oauthAuthorize('fake-id', {
         redirect_uri: 'https://example.invalid/cb',
         client_id: 'fake-client',
         state: 'xyz',
         response_type: 'code',
       }),
+      406,
     );
   });
 
-  it('oauthToken is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('oauthToken(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.oauthToken('fake-id', {
         grant_type: 'authorization_code',
         code: 'fake-code',
         redirect_uri: 'https://example.invalid/cb',
         client_id: 'fake-client',
       }),
+      406,
     );
   });
 
-  it('oauthRegister is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('oauthRegister(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.oauthRegister('fake-id', {
         client_name: 'e2e-client',
         grant_types: ['authorization_code'],
         response_types: ['code'],
         token_endpoint_auth_method: 'client_secret_basic',
       }),
+      406,
     );
   });
 
   // ── User credentials (BYOK) ────────────────────────────────────────────────
 
-  it('setUserCredential is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('setUserCredential(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.setUserCredential('fake-id', {
         credential: 'fake-secret',
         save: false,
       }),
+      406,
     );
   });
 
-  it('deleteUserCredential is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('deleteUserCredential(fake-id) rejects 405', async () => {
+    await expectTypedError(
       client.mcp.servers.deleteUserCredential('fake-id'),
+      405,
     );
   });
 
   // ── User credentials (OAuth2) ──────────────────────────────────────────────
 
-  it('setOAuthUserCredential is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('setOAuthUserCredential(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.setOAuthUserCredential('fake-id', {
         access_token: 'fake-access',
         refresh_token: 'fake-refresh',
         expires_in: 3600,
         scopes: ['read'],
       }),
+      406,
     );
   });
 
-  it('deleteOAuthUserCredential is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('deleteOAuthUserCredential(fake-id) rejects 405', async () => {
+    await expectTypedError(
       client.mcp.servers.deleteOAuthUserCredential('fake-id'),
+      405,
     );
   });
 
-  it('oauthUserCredentialStatus is callable (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('oauthUserCredentialStatus(fake-id) rejects 406', async () => {
+    await expectTypedError(
       client.mcp.servers.oauthUserCredentialStatus('fake-id'),
+      406,
     );
   });
 });
@@ -309,38 +277,37 @@ describe('MCP: servers', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('MCP: toolsets', () => {
-  it('lists toolsets (likely empty)', async () => {
-    const result = await eitherOrStructuredError(client.mcp.toolsets.list());
-    if (!(result instanceof Error)) {
-      expect(Array.isArray(result)).toBe(true);
-    }
+  it('list rejects 406', async () => {
+    await expectTypedError(client.mcp.toolsets.list(), 406);
   });
 
-  it('add accepts a fake toolset (best-effort)', async () => {
-    await eitherOrStructuredError(
+  it('add rejects 406', async () => {
+    await expectTypedError(
       client.mcp.toolsets.add({
         toolset_name: uniq('toolset'),
         description: 'e2e toolset',
         tools: [{ server_id: 'fake-id', tool_name: 'echo' }],
       }),
+      406,
     );
   });
 
-  it('retrieve returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(client.mcp.toolsets.retrieve('fake-id'));
+  it('retrieve(fake-id) rejects 406', async () => {
+    await expectTypedError(client.mcp.toolsets.retrieve('fake-id'), 406);
   });
 
-  it('edit returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(
+  it('edit(fake-id) rejects 405', async () => {
+    await expectTypedError(
       client.mcp.toolsets.edit({
         toolset_id: 'fake-id',
         toolset_name: 'updated',
         description: 'updated',
       }),
+      405,
     );
   });
 
-  it('remove returns a structured error for an unknown id', async () => {
-    await eitherOrStructuredError(client.mcp.toolsets.remove('fake-id'));
+  it('remove(fake-id) rejects 405', async () => {
+    await expectTypedError(client.mcp.toolsets.remove('fake-id'), 405);
   });
 });

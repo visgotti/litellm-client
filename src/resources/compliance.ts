@@ -10,7 +10,15 @@ import type { RequestFn } from '../client';
 export class ComplianceResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /compliance/eu-ai-act */
+  /**
+   * Run an EU AI Act compliance check / report against the supplied payload.
+   *
+   * @param params - The compliance check input.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The EU AI Act compliance result.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/audit_logs
+   */
   euAiAct(
     params: ComplianceEuAiActParams,
     options?: RequestOptions,
@@ -23,7 +31,15 @@ export class ComplianceResource {
     });
   }
 
-  /** POST /compliance/gdpr */
+  /**
+   * Run a GDPR compliance check / report against the supplied payload.
+   *
+   * @param params - The compliance check input.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The GDPR compliance result.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/audit_logs
+   */
   gdpr(
     params: ComplianceGdprParams,
     options?: RequestOptions,

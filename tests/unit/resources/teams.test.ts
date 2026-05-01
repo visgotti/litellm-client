@@ -131,7 +131,7 @@ describe('TeamsResource', () => {
     expect(arg.body.value).toEqual({ callback_name: 'webhook' });
   });
 
-  it('getCallback() / disableLogging() / myMembership()', async () => {
+  it('getCallback() / disableLogging()', async () => {
     await teams.getCallback('t1');
     expect(request.mock.calls[0][0]).toMatchObject({
       method: 'GET',
@@ -142,12 +142,6 @@ describe('TeamsResource', () => {
     expect(request.mock.calls[1][0]).toMatchObject({
       method: 'POST',
       path: '/team/t1/disable_logging',
-    });
-
-    await teams.myMembership('t1');
-    expect(request.mock.calls[2][0]).toMatchObject({
-      method: 'GET',
-      path: '/team/t1/members/me',
     });
   });
 });

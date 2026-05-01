@@ -26,6 +26,14 @@ describe('HealthResource', () => {
     expect(request.mock.calls[3][0].path).toBe('/health/readiness');
   });
 
+  it('livenessAlias() GETs /health/liveness', async () => {
+    await health.livenessAlias();
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'GET',
+      path: '/health/liveness',
+    });
+  });
+
   it('services() puts service in query', async () => {
     await health.services('db');
     expect(request.mock.calls[0][0]).toMatchObject({

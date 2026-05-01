@@ -10,6 +10,7 @@ import type {
   UserListResponse,
   UserInfoV2Response,
   UserAvailableRolesResponse,
+  UserAvailableUsersResponse,
   UserBulkUpdateParams,
   UserBulkUpdateResponse,
   UserDailyActivityAggregatedParams,
@@ -21,7 +22,15 @@ import type { RequestFn } from '../client';
 export class UsersResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /user/new */
+  /**
+   * Create a new internal user (`POST /user/new`).
+   *
+   * @param params - User attributes (email, role, models, budget, metadata, etc.)
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created user record, including any auto-generated key.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   create(params: UserCreateParams = {}, options?: RequestOptions): Promise<UserCreateResponse> {
     return this.request<UserCreateResponse>({
       method: 'POST',
@@ -31,7 +40,15 @@ export class UsersResource {
     });
   }
 
-  /** POST /user/update */
+  /**
+   * Update an existing internal user (`POST /user/update`).
+   *
+   * @param params - User identifier plus fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated user record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   update(params: UserUpdateParams, options?: RequestOptions): Promise<UserUpdateResponse> {
     return this.request<UserUpdateResponse>({
       method: 'POST',
@@ -41,7 +58,15 @@ export class UsersResource {
     });
   }
 
-  /** POST /user/delete */
+  /**
+   * Delete one or more internal users (`POST /user/delete`).
+   *
+   * @param params - User ids to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Deletion result with counts and any errors.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   delete(params: UserDeleteParams, options?: RequestOptions): Promise<UserDeleteResponse> {
     return this.request<UserDeleteResponse>({
       method: 'POST',
@@ -51,7 +76,15 @@ export class UsersResource {
     });
   }
 
-  /** GET /user/info?user_id=... */
+  /**
+   * Get info for a single user, or the calling user when `userId` is omitted (`GET /user/info`).
+   *
+   * @param userId - Optional user id to look up; defaults to the caller.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The user's profile, keys, teams, and budget info.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   info(userId?: string, options?: RequestOptions): Promise<UserInfoResponse> {
     return this.request<UserInfoResponse>({
       method: 'GET',
@@ -63,7 +96,15 @@ export class UsersResource {
     });
   }
 
-  /** GET /v2/user/info — extended user info. */
+  /**
+   * Extended user info with richer per-user fields (`GET /v2/user/info`).
+   *
+   * @param userId - Optional user id to look up; defaults to the caller.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The v2 user info payload.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   infoV2(userId?: string, options?: RequestOptions): Promise<UserInfoV2Response> {
     return this.request<UserInfoV2Response>({
       method: 'GET',
@@ -75,7 +116,15 @@ export class UsersResource {
     });
   }
 
-  /** GET /user/list */
+  /**
+   * List internal users with optional filtering and pagination (`GET /user/list`).
+   *
+   * @param params - Optional filters (role, page, page_size, etc.)
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A paginated list of user records.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   list(params: UserListParams = {}, options?: RequestOptions): Promise<UserListResponse> {
     return this.request<UserListResponse>({
       method: 'GET',
@@ -90,16 +139,14 @@ export class UsersResource {
     });
   }
 
-  /** GET /user/get_users */
-  getUsers(options?: RequestOptions): Promise<UserListResponse> {
-    return this.request<UserListResponse>({
-      method: 'GET',
-      path: '/user/get_users',
-      options,
-    });
-  }
-
-  /** GET /user/available_roles — list available user roles + permissions. */
+  /**
+   * List the available user roles plus their permissions (`GET /user/available_roles`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A map of role name to permission descriptor.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   availableRoles(options?: RequestOptions): Promise<UserAvailableRolesResponse> {
     return this.request<UserAvailableRolesResponse>({
       method: 'GET',
@@ -108,7 +155,32 @@ export class UsersResource {
     });
   }
 
-  /** POST /user/bulk_update */
+  /**
+   * Report seat usage / availability — total vs. used user and team seats
+   * (`GET /user/available_users`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Seat usage summary.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
+  availableUsers(options?: RequestOptions): Promise<UserAvailableUsersResponse> {
+    return this.request<UserAvailableUsersResponse>({
+      method: 'GET',
+      path: '/user/available_users',
+      options,
+    });
+  }
+
+  /**
+   * Update many users in a single call (`POST /user/bulk_update`).
+   *
+   * @param params - Bulk update payload with per-user updates.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-user results including successes and any errors.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   bulkUpdate(
     params: UserBulkUpdateParams,
     options?: RequestOptions,
@@ -121,7 +193,15 @@ export class UsersResource {
     });
   }
 
-  /** GET /user/daily/activity/aggregated */
+  /**
+   * Aggregated daily activity across users for a date range (`GET /user/daily/activity/aggregated`).
+   *
+   * @param params - Date range and optional grouping filters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Daily aggregates of requests, tokens, and spend.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/users
+   */
   dailyActivityAggregated(
     params: UserDailyActivityAggregatedParams,
     options?: RequestOptions,

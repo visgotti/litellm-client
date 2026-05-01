@@ -27,22 +27,50 @@ import type { RequestFn } from '../client';
 export class ModelsResource {
   constructor(private request: RequestFn) {}
 
-  /** GET /v1/models — OpenAI-compatible model list. */
+  /**
+   * OpenAI-compatible model list (`GET /v1/models`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The OpenAI-style models list.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   list(options?: RequestOptions): Promise<ModelListResponse> {
     return this.request<ModelListResponse>({ method: 'GET', path: '/v1/models', options });
   }
 
-  /** GET /model/info — full LiteLLM model info incl. params + metadata. */
+  /**
+   * Full LiteLLM model info, including params and metadata (`GET /model/info`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Detailed model info entries.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   info(options?: RequestOptions): Promise<ModelInfoResponse> {
     return this.request<ModelInfoResponse>({ method: 'GET', path: '/model/info', options });
   }
 
-  /** GET /v2/model/info — v2 model info (richer per-model fields). */
+  /**
+   * v2 model info with richer per-model fields (`GET /v2/model/info`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns v2 model info entries.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   infoV2(options?: RequestOptions): Promise<ModelInfoV2Response> {
     return this.request<ModelInfoV2Response>({ method: 'GET', path: '/v2/model/info', options });
   }
 
-  /** GET /model_group/info — info aggregated by model group. */
+  /**
+   * Model info aggregated by model group (`GET /model_group/info`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-group aggregated model info.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   groupInfo(options?: RequestOptions): Promise<ModelGroupInfoResponse> {
     return this.request<ModelGroupInfoResponse>({
       method: 'GET',
@@ -51,7 +79,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /model/new — register a new model at runtime. */
+  /**
+   * Register a new model deployment at runtime (`POST /model/new`).
+   *
+   * @param params - Model name, `litellm_params`, and any model_info metadata.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly registered model record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   create(params: ModelCreateParams, options?: RequestOptions): Promise<ModelCreateResponse> {
     return this.request<ModelCreateResponse>({
       method: 'POST',
@@ -61,7 +97,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /model/update — update an existing model deployment. */
+  /**
+   * Update an existing model deployment (`POST /model/update`).
+   *
+   * @param params - Model identifier plus fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated model record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   update(params: ModelUpdateParams, options?: RequestOptions): Promise<ModelUpdateResponse> {
     return this.request<ModelUpdateResponse>({
       method: 'POST',
@@ -71,7 +115,16 @@ export class ModelsResource {
     });
   }
 
-  /** PATCH /model/{model_id}/update — partial update by model id. */
+  /**
+   * Partial update of a model by id (`PATCH /model/{model_id}/update`).
+   *
+   * @param modelId - The model id to patch.
+   * @param params - Partial set of fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated model record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   patchUpdate(
     modelId: string,
     params: Partial<ModelUpdateParams>,
@@ -85,7 +138,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /model/delete — delete a model deployment. */
+  /**
+   * Delete a model deployment (`POST /model/delete`).
+   *
+   * @param params - The model to delete (by id).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Deletion confirmation.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   delete(params: ModelDeleteParams, options?: RequestOptions): Promise<ModelDeleteResponse> {
     return this.request<ModelDeleteResponse>({
       method: 'POST',
@@ -95,7 +156,14 @@ export class ModelsResource {
     });
   }
 
-  /** GET /model/settings — provider/model defaults. */
+  /**
+   * Get provider/model defaults from the proxy config (`GET /model/settings`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The provider/model default settings.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   settings(options?: RequestOptions): Promise<ModelSettingsResponse> {
     return this.request<ModelSettingsResponse>({
       method: 'GET',
@@ -104,12 +172,26 @@ export class ModelsResource {
     });
   }
 
-  /** GET /model/metrics — per-model latency/usage. */
+  /**
+   * Per-model latency and usage metrics (`GET /model/metrics`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-model metrics.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   metrics(options?: RequestOptions): Promise<ModelMetricsResponse> {
     return this.request<ModelMetricsResponse>({ method: 'GET', path: '/model/metrics', options });
   }
 
-  /** GET /model/streaming_metrics */
+  /**
+   * Per-model streaming metrics (`GET /model/streaming_metrics`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-model streaming metrics.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   streamingMetrics(options?: RequestOptions): Promise<ModelStreamingMetricsResponse> {
     return this.request<ModelStreamingMetricsResponse>({
       method: 'GET',
@@ -118,7 +200,14 @@ export class ModelsResource {
     });
   }
 
-  /** GET /model/metrics/slow_responses */
+  /**
+   * Slowest responses observed per model (`GET /model/metrics/slow_responses`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-model slow response samples.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   slowResponses(options?: RequestOptions): Promise<ModelSlowResponsesResponse> {
     return this.request<ModelSlowResponsesResponse>({
       method: 'GET',
@@ -127,7 +216,14 @@ export class ModelsResource {
     });
   }
 
-  /** GET /model/metrics/exceptions */
+  /**
+   * Recent exceptions per model (`GET /model/metrics/exceptions`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-model exception summaries.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   exceptions(options?: RequestOptions): Promise<ModelExceptionsResponse> {
     return this.request<ModelExceptionsResponse>({
       method: 'GET',
@@ -136,7 +232,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /model_group/make_public — make a list of model groups public. */
+  /**
+   * Make a list of model groups publicly visible (`POST /model_group/make_public`).
+   *
+   * @param params - The model groups to publish.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   makeGroupPublic(
     params: ModelGroupMakePublicParams,
     options?: RequestOptions,
@@ -149,7 +253,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /model_hub/update_useful_links */
+  /**
+   * Update the curated "useful links" shown on the model hub (`POST /model_hub/update_useful_links`).
+   *
+   * @param params - The links payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   updateModelHubLinks(
     params: ModelHubUpdateLinksParams,
     options?: RequestOptions,
@@ -162,7 +274,14 @@ export class ModelsResource {
     });
   }
 
-  /** GET /model/cost_map/source */
+  /**
+   * Inspect the configured cost-map source (`GET /model/cost_map/source`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The current cost-map source descriptor.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   costMapSource(options?: RequestOptions): Promise<ModelCostMapSourceResponse> {
     return this.request<ModelCostMapSourceResponse>({
       method: 'GET',
@@ -171,7 +290,14 @@ export class ModelsResource {
     });
   }
 
-  /** POST /reload/model_cost_map — reload the in-process cost map now. */
+  /**
+   * Reload the in-process model cost map immediately (`POST /reload/model_cost_map`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Reload confirmation including the resulting source state.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   reloadCostMap(options?: RequestOptions): Promise<ModelCostMapReloadResponse> {
     return this.request<ModelCostMapReloadResponse>({
       method: 'POST',
@@ -180,7 +306,15 @@ export class ModelsResource {
     });
   }
 
-  /** POST /schedule/model_cost_map_reload */
+  /**
+   * Schedule recurring cost-map reloads (`POST /schedule/model_cost_map_reload`).
+   *
+   * @param params - Schedule attributes (interval, source, etc.)
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   scheduleCostMapReload(
     params: ModelCostMapScheduleParams,
     options?: RequestOptions,
@@ -193,7 +327,14 @@ export class ModelsResource {
     });
   }
 
-  /** DELETE /schedule/model_cost_map_reload */
+  /**
+   * Cancel any scheduled cost-map reload (`DELETE /schedule/model_cost_map_reload`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Server response payload (shape varies by version).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   cancelScheduledCostMapReload(options?: RequestOptions): Promise<unknown> {
     return this.request({
       method: 'DELETE',
@@ -202,7 +343,14 @@ export class ModelsResource {
     });
   }
 
-  /** GET /schedule/model_cost_map_reload/status */
+  /**
+   * Inspect the status of the scheduled cost-map reload (`GET /schedule/model_cost_map_reload/status`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Schedule status (last run, next run, errors, etc.)
+   *
+   * @see https://docs.litellm.ai/docs/proxy/model_management
+   */
   costMapReloadStatus(
     options?: RequestOptions,
   ): Promise<ModelCostMapScheduleStatusResponse> {

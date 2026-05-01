@@ -172,5 +172,16 @@ describe('Streaming', () => {
       s.abort();
       expect(controller.signal.aborted).toBe(true);
     });
+
+    it('toArray() drains the stream into an array', async () => {
+      async function* gen(): AsyncIterable<number> {
+        yield 1;
+        yield 2;
+        yield 3;
+      }
+      const s = new Stream(gen(), new AbortController());
+      const result = await s.toArray();
+      expect(result).toEqual([1, 2, 3]);
+    });
   });
 });

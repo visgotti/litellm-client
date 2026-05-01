@@ -123,7 +123,15 @@ model_list:
   # Anthropic
   - model_name: "live-anthropic-chat"
     litellm_params:
-      model: "anthropic/claude-3-5-haiku-latest"
+      model: "anthropic/claude-haiku-4-5"
+      api_key: "os.environ/ANTHROPIC_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # Bare alias so /v1/messages (Anthropic-native) can resolve the model string.
+  - model_name: "claude-haiku-4-5"
+    litellm_params:
+      model: "anthropic/claude-haiku-4-5"
       api_key: "os.environ/ANTHROPIC_API_KEY"
     model_info:
       mode: "chat"
@@ -139,14 +147,23 @@ model_list:
   # Google Gemini
   - model_name: "live-gemini-chat"
     litellm_params:
-      model: "gemini/gemini-2.0-flash"
+      model: "gemini/gemini-2.5-flash-lite"
+      api_key: "os.environ/GEMINI_API_KEY"
+    model_info:
+      mode: "chat"
+
+  # Bare alias so Gemini-native generateContent / streamGenerateContent
+  # endpoints can resolve the model string from the URL path.
+  - model_name: "gemini-2.5-flash-lite"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash-lite"
       api_key: "os.environ/GEMINI_API_KEY"
     model_info:
       mode: "chat"
 
   - model_name: "live-gemini-embedding"
     litellm_params:
-      model: "gemini/text-embedding-004"
+      model: "gemini/gemini-embedding-001"
       api_key: "os.environ/GEMINI_API_KEY"
     model_info:
       mode: "embedding"

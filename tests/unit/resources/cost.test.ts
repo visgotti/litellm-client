@@ -63,7 +63,7 @@ describe('CostResource', () => {
     const out = await new CostResource(request).marginConfig.get();
     expect(calls[0].method).toBe('GET');
     expect(calls[0].path).toBe('/config/cost_margin_config');
-    expect(out.values).toBeDefined();
+    expect(out.values).toEqual({ openai: 0.05 });
   });
 
   it('marginConfig.update -> PATCH /config/cost_margin_config', async () => {

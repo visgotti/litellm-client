@@ -58,19 +58,18 @@ describe('SpendResource', () => {
     expect(request.mock.calls[0][0].path).toBe('/global/spend/keys');
   });
 
-  it('globalUsers() -> /global/spend/users', async () => {
-    await spend.globalUsers();
-    expect(request.mock.calls[0][0].path).toBe('/global/spend/users');
-  });
-
   it('globalModels() -> /global/spend/models', async () => {
     await spend.globalModels();
     expect(request.mock.calls[0][0].path).toBe('/global/spend/models');
   });
 
-  it('globalEndUsers() -> /global/spend/end_users', async () => {
+  it('globalEndUsers() POSTs to /global/spend/end_users', async () => {
     await spend.globalEndUsers();
-    expect(request.mock.calls[0][0].path).toBe('/global/spend/end_users');
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'POST',
+      path: '/global/spend/end_users',
+      body: { kind: 'json', value: {} },
+    });
   });
 
   it('globalTeams() -> /global/spend/teams', async () => {
@@ -98,11 +97,6 @@ describe('SpendResource', () => {
   it('userDailyActivity() forwards params via query', async () => {
     await spend.userDailyActivity({ start_date: '2026-01-01', end_date: '2026-01-31' } as any);
     expect(request.mock.calls[0][0].path).toBe('/user/daily/activity');
-  });
-
-  it('dailyActivity() forwards params via query', async () => {
-    await spend.dailyActivity({ start_date: '2026-01-01', end_date: '2026-01-31' } as any);
-    expect(request.mock.calls[0][0].path).toBe('/daily/activity');
   });
 
   it('keys() forwards params via query', async () => {
@@ -162,6 +156,30 @@ describe('SpendResource', () => {
 
     await spend.globalAllEndUsers();
     expect(request.mock.calls[3][0].path).toBe('/global/all_end_users');
+  });
+
+  it('globalAllTagSpend() GETs /global/spend/tags with optional date filter', async () => {
+    await spend.globalAllTagSpend({
+      start_date: '2026-01-01',
+      end_date: '2026-01-31',
+      tags: 'prod,staging',
+    });
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/global/spend/tags');
+    expect(arg.options.query).toMatchObject({
+      start_date: '2026-01-01',
+      end_date: '2026-01-31',
+      tags: 'prod,staging',
+    });
+  });
+
+  it('globalAllTagSpend() works with no params (default branch)', async () => {
+    await spend.globalAllTagSpend();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/global/spend/tags');
+    expect(arg.options.query).toEqual({});
   });
 
   it('activity / activityByModel / activityExceptions / activityExceptionsByDeployment / activityCacheHits', async () => {

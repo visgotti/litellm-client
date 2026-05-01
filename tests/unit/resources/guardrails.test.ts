@@ -268,4 +268,36 @@ describe('GuardrailsResource', () => {
     expect(arg.path).toBe('/policies/usage/overview');
     expect(arg.options.query).toEqual({ start_date: '2024-01-01' });
   });
+
+  it('usageOverview works with no params (default {})', async () => {
+    await r.usageOverview();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/guardrails/usage/overview');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('usageDetail works with no params (default {})', async () => {
+    await r.usageDetail('g1');
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/guardrails/usage/detail/g1');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('usageLogs works with no params (default {})', async () => {
+    await r.usageLogs();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/guardrails/usage/logs');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('policiesUsageOverview works with no params (default {})', async () => {
+    await r.policiesUsageOverview();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/policies/usage/overview');
+    expect(arg.options.query).toEqual({});
+  });
 });

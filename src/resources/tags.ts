@@ -24,7 +24,15 @@ import type { RequestFn } from '../client';
 export class TagsResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /tag/new */
+  /**
+   * Create a new tag definition (`POST /tag/new`).
+   *
+   * @param params - Tag attributes (name, description, models, etc.)
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created tag record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   create(params: TagCreateParams, options?: RequestOptions): Promise<TagCreateResponse> {
     return this.request<TagCreateResponse>({
       method: 'POST',
@@ -34,7 +42,15 @@ export class TagsResource {
     });
   }
 
-  /** POST /tag/update */
+  /**
+   * Update an existing tag (`POST /tag/update`).
+   *
+   * @param params - Tag name plus fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated tag record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   update(params: TagUpdateParams, options?: RequestOptions): Promise<TagUpdateResponse> {
     return this.request<TagUpdateResponse>({
       method: 'POST',
@@ -44,7 +60,15 @@ export class TagsResource {
     });
   }
 
-  /** POST /tag/info */
+  /**
+   * Fetch info for one or more tags (`POST /tag/info`).
+   *
+   * @param params - Tag names to look up.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The matching tag records.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   info(params: TagInfoParams, options?: RequestOptions): Promise<TagInfoResponse> {
     return this.request<TagInfoResponse>({
       method: 'POST',
@@ -54,7 +78,15 @@ export class TagsResource {
     });
   }
 
-  /** POST /tag/delete */
+  /**
+   * Delete a tag (`POST /tag/delete`).
+   *
+   * @param params - The tag to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Deletion confirmation.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   delete(params: TagDeleteParams, options?: RequestOptions): Promise<TagDeleteResponse> {
     return this.request<TagDeleteResponse>({
       method: 'POST',
@@ -64,7 +96,14 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/list */
+  /**
+   * List all configured tags (`GET /tag/list`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The full list of tag records.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   list(options?: RequestOptions): Promise<TagListResponse> {
     return this.request<TagListResponse>({
       method: 'GET',
@@ -73,7 +112,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/daily/activity */
+  /**
+   * Daily activity totals broken down by tag (`GET /tag/daily/activity`).
+   *
+   * @param params - Optional date range and tag filter.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Daily aggregates of requests, tokens, and spend per tag.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   dailyActivity(
     params: TagDailyActivityParams = {},
     options?: RequestOptions,
@@ -91,7 +138,14 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/distinct */
+  /**
+   * List every distinct tag observed in usage (`GET /tag/distinct`).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The list of distinct tag names.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   distinct(options?: RequestOptions): Promise<TagDistinctResponse> {
     return this.request<TagDistinctResponse>({
       method: 'GET',
@@ -100,7 +154,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/dau */
+  /**
+   * Daily-active-users (DAU) for a tag (`GET /tag/dau`).
+   *
+   * @param params - Optional `tag_filter` / `tag_filters` to scope the query.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Daily active user counts.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   dau(
     params: TagActiveUsersParams = {},
     options?: RequestOptions,
@@ -115,7 +177,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/wau */
+  /**
+   * Weekly-active-users (WAU) for a tag (`GET /tag/wau`).
+   *
+   * @param params - Optional `tag_filter` / `tag_filters` to scope the query.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Weekly active user counts.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   wau(
     params: TagActiveUsersParams = {},
     options?: RequestOptions,
@@ -130,7 +200,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/mau */
+  /**
+   * Monthly-active-users (MAU) for a tag (`GET /tag/mau`).
+   *
+   * @param params - Optional `tag_filter` / `tag_filters` to scope the query.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Monthly active user counts.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   mau(
     params: TagActiveUsersParams = {},
     options?: RequestOptions,
@@ -145,7 +223,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/summary */
+  /**
+   * Aggregate per-tag summary across a date range (`GET /tag/summary`).
+   *
+   * @param params - Required date range plus optional tag filters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-tag summary metrics.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   summary(params: TagSummaryParams, options?: RequestOptions): Promise<TagSummaryResponse> {
     const query: Record<string, string | number | boolean | undefined | null> = {
       ...(options?.query ?? {}),
@@ -163,7 +249,15 @@ export class TagsResource {
     });
   }
 
-  /** GET /tag/user-agent/per-user-analytics */
+  /**
+   * Per-user analytics for the user-agent tag dimension (`GET /tag/user-agent/per-user-analytics`).
+   *
+   * @param params - Optional tag filters and pagination.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Per-user analytics rows.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/tags
+   */
   userAgentPerUserAnalytics(
     params: TagPerUserAnalyticsParams = {},
     options?: RequestOptions,

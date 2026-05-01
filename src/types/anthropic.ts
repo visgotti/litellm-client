@@ -168,6 +168,8 @@ export interface AnthropicMessagesCreateParamsBase {
   tool_choice?: AnthropicToolChoice;
   thinking?: AnthropicThinkingConfig;
   service_tier?: 'auto' | 'standard_only' | (string & {});
+  /** Structured output format (e.g. JSON schema) — proxied through to providers that support it. */
+  output_format?: { type: 'json_schema'; schema: Record<string, unknown> };
   /** Extra headers forwarded to the provider via the proxy */
   extra_headers?: Record<string, string>;
 }
@@ -217,6 +219,21 @@ export interface AnthropicMessage {
 }
 
 // ─── Streaming events (SSE) ──────────────────────────────────────────────────
+// Reference: https://docs.anthropic.com/en/api/messages-streaming
+//            https://docs.litellm.ai/docs/anthropic_unified/
+//
+// The `messages` endpoint emits a sequence of SSE events with `event:` /
+// `data:` lines. The `data:` payload is a JSON object whose `type` literal
+// discriminates the variant. Two-tier pattern: a strict `Known…` union for
+// exhaustive `switch` narrowing, plus an `Unknown…` fallback so unmodelled
+// future event types pass through without a cast.
+
+/** Error body shared by `error` events (and `litellm` proxy guardrail blocks). */
+export interface AnthropicErrorBody {
+  type: string;
+  message: string;
+  [key: string]: unknown;
+}
 
 export interface AnthropicMessageStartEvent {
   type: 'message_start';
@@ -239,11 +256,38 @@ export interface AnthropicSignatureDelta {
   type: 'signature_delta';
   signature: string;
 }
-export type AnthropicContentBlockDelta =
+/**
+ * Citation delta — emitted when a streamed text content block carries
+ * `citations`. The shape follows the Anthropic citations spec; kept
+ * structurally open since the citation object varies by source type.
+ */
+export interface AnthropicCitationsDelta {
+  type: 'citations_delta';
+  citation: { type?: string; [key: string]: unknown };
+}
+
+/**
+ * Strict union of *known* `content_block_delta.delta` payloads. Use this
+ * inside a `switch (delta.type)` for exhaustive narrowing.
+ */
+export type AnthropicKnownStreamDelta =
   | AnthropicTextDelta
   | AnthropicInputJsonDelta
   | AnthropicThinkingDelta
-  | AnthropicSignatureDelta;
+  | AnthropicSignatureDelta
+  | AnthropicCitationsDelta;
+
+/** Forward-compat fallback for unmodelled `content_block_delta.delta` payloads. */
+export interface AnthropicUnknownStreamDelta {
+  type: string & {};
+  [key: string]: unknown;
+}
+
+/** Open union of `content_block_delta.delta` payloads. */
+export type AnthropicStreamDelta = AnthropicKnownStreamDelta | AnthropicUnknownStreamDelta;
+
+/** @deprecated Use `AnthropicStreamDelta` (open) or `AnthropicKnownStreamDelta` (strict). */
+export type AnthropicContentBlockDelta = AnthropicStreamDelta;
 
 export interface AnthropicContentBlockStartEvent {
   type: 'content_block_start';
@@ -254,7 +298,7 @@ export interface AnthropicContentBlockStartEvent {
 export interface AnthropicContentBlockDeltaEvent {
   type: 'content_block_delta';
   index: number;
-  delta: AnthropicContentBlockDelta;
+  delta: AnthropicStreamDelta;
 }
 
 export interface AnthropicContentBlockStopEvent {
@@ -281,10 +325,14 @@ export interface AnthropicPingEvent {
 
 export interface AnthropicErrorEvent {
   type: 'error';
-  error: { type: string; message: string };
+  error: AnthropicErrorBody;
 }
 
-export type MessageStreamEvent =
+/**
+ * Strict discriminated union of *known* Anthropic streaming events. Use
+ * this when you want exhaustive `switch` narrowing on `event.type`.
+ */
+export type KnownAnthropicMessageStreamEvent =
   | AnthropicMessageStartEvent
   | AnthropicContentBlockStartEvent
   | AnthropicContentBlockDeltaEvent
@@ -293,6 +341,32 @@ export type MessageStreamEvent =
   | AnthropicMessageStopEvent
   | AnthropicPingEvent
   | AnthropicErrorEvent;
+
+/**
+ * Forward-compat fallback for streaming event types not yet modelled. The
+ * `string & {}` discriminator preserves IntelliSense on the modelled
+ * literals while still accepting any future value at runtime.
+ */
+export interface UnknownAnthropicMessageStreamEvent {
+  type: string & {};
+  [key: string]: unknown;
+}
+
+/**
+ * Open discriminated union of Anthropic streaming events. Includes a
+ * forward-compat fallback so payloads carrying new `type` literals do not
+ * require casts. For exhaustive narrowing on the modelled literals (e.g.
+ * inside a `switch`), narrow to `KnownAnthropicMessageStreamEvent` first.
+ */
+export type AnthropicMessageStreamEvent =
+  | KnownAnthropicMessageStreamEvent
+  | UnknownAnthropicMessageStreamEvent;
+
+/**
+ * Backwards-compatible alias of the open union. Existing imports of
+ * `MessageStreamEvent` continue to compile against the new two-tier shape.
+ */
+export type MessageStreamEvent = AnthropicMessageStreamEvent;
 
 // ─── Count tokens ────────────────────────────────────────────────────────────
 
@@ -310,31 +384,99 @@ export interface AnthropicCountTokensResponse {
 }
 
 // ─── Skills ──────────────────────────────────────────────────────────────────
+// Reference: https://docs.litellm.ai/docs/skills
+// Requires header `anthropic-beta: skills-2025-10-02` and query param `beta=true`.
+
+/** Required `anthropic-beta` header value for the Skills API. */
+export const ANTHROPIC_BETA_SKILLS = 'skills-2025-10-02';
 
 export interface AnthropicSkillObject {
   id: string;
   type?: 'skill' | (string & {});
-  name: string;
-  description?: string | null;
+  /** Skill display title (verbatim from `display_title` form field at create time). */
+  display_title?: string;
+  /** ID of the skill's latest version (e.g. "skillver_01xyz789"). */
+  latest_version_id?: string;
+  /** Human-readable name (legacy/optional in some responses). */
+  name?: string;
+  /** Skill version label (e.g. "1.0.0"). */
   version?: string | null;
+  description?: string | null;
   created_at?: string;
   updated_at?: string;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
+/** A single file to upload as part of a skill (ZIP, SKILL.md, or supporting file). */
+export interface AnthropicSkillFileUpload {
+  /** File contents – Buffer / Uint8Array / Blob / string. */
+  file: ArrayBuffer | Uint8Array | Blob | string;
+  /** Filename to send to the server. */
+  filename: string;
+  /** Optional MIME type for the file. */
+  contentType?: string;
+}
+
+/**
+ * Parameters for `POST /v1/skills` — multipart/form-data upload.
+ *
+ * The Skills API requires the `anthropic-beta: skills-2025-10-02` header (added
+ * automatically by the resource) and the `beta=true` query param (also added
+ * automatically; opt out via `beta: false`).
+ */
 export interface AnthropicSkillCreateParams {
-  name: string;
-  description?: string;
-  version?: string;
-  instructions?: string;
-  metadata?: Record<string, unknown>;
-  [key: string]: unknown;
+  /** Skill display name — sent as the `display_title` form field. */
+  display_title: string;
+  /**
+   * One or more files to upload as `files[]`. Pass a single binary value
+   * (Buffer / Uint8Array / ArrayBuffer / Blob / string) for a one-file upload
+   * (SKILL.md or a packaged ZIP), or an array of `{ file, filename, contentType? }`
+   * to upload multiple files (e.g. SKILL.md plus supporting files).
+   */
+  files:
+    | ArrayBuffer
+    | Uint8Array
+    | Blob
+    | string
+    | AnthropicSkillFileUpload
+    | AnthropicSkillFileUpload[];
+  /** Filename for the single-binary form of `files` (defaults to "skill.zip"). Ignored when `files` is an array. */
+  filename?: string;
+  /** MIME type for the single-binary form of `files`. Ignored when `files` is an array. */
+  contentType?: string;
+  /** Optional model identifier — used for routing to specific provider credentials. */
+  model?: string;
+  /**
+   * Toggle the `beta=true` query param. Defaults to `true`; pass `false` to opt
+   * out (e.g. against a proxy that already injects it).
+   */
+  beta?: boolean;
 }
 
 export interface AnthropicSkillListParams {
   limit?: number;
   cursor?: string;
+  before?: string;
+  after?: string;
+  /** Optional model identifier — used for routing. */
+  model?: string;
+  /** Toggle the `beta=true` query param. Defaults to `true`. */
+  beta?: boolean;
+}
+
+export interface AnthropicSkillRetrieveParams {
+  /** Optional model identifier — used for routing. */
+  model?: string;
+  /** Toggle the `beta=true` query param. Defaults to `true`. */
+  beta?: boolean;
+}
+
+export interface AnthropicSkillDeleteParams {
+  /** Optional model identifier — used for routing. */
+  model?: string;
+  /** Toggle the `beta=true` query param. Defaults to `true`. */
+  beta?: boolean;
 }
 
 export interface AnthropicSkillListResponse {
@@ -349,4 +491,34 @@ export interface AnthropicSkillDeletedResponse {
   id: string;
   deleted: boolean;
   type?: 'skill.deleted' | (string & {});
+}
+
+// ─── HTTP error body ─────────────────────────────────────────────────────────
+
+/**
+ * Provider-native HTTP error body returned by Anthropic's REST endpoints
+ * (e.g. `/v1/messages`) when a request fails. The proxy passes this shape
+ * through under `LiteLLMError.body` when routing to Anthropic.
+ *
+ * Distinct from `AnthropicErrorBody` (the inline payload of streaming
+ * `error` SSE events) — this is the top-level JSON envelope of a non-2xx
+ * HTTP response.
+ *
+ * Reference: https://docs.anthropic.com/en/api/errors
+ */
+export interface AnthropicApiErrorBody {
+  type: 'error';
+  error: {
+    type:
+      | 'invalid_request_error'
+      | 'authentication_error'
+      | 'permission_error'
+      | 'not_found_error'
+      | 'request_too_large'
+      | 'rate_limit_error'
+      | 'api_error'
+      | 'overloaded_error'
+      | (string & {});
+    message: string;
+  };
 }

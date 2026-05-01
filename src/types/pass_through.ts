@@ -16,8 +16,10 @@ export type PassThroughProviderName =
   | 'milvus'
   | 'bedrock'
   | 'assemblyAi'
+  | 'assemblyAiEu'
   | 'azure'
   | 'openai'
+  | 'openaiPassthrough'
   | 'cursor'
   | 'langfuse';
 
@@ -32,8 +34,10 @@ export const PASS_THROUGH_PREFIXES: Record<PassThroughProviderName, string> = {
   milvus: '/milvus',
   bedrock: '/bedrock',
   assemblyAi: '/assemblyai',
+  assemblyAiEu: '/eu.assemblyai',
   azure: '/azure',
   openai: '/openai',
+  openaiPassthrough: '/openai_passthrough',
   cursor: '/cursor',
   langfuse: '/langfuse',
 };

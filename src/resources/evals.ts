@@ -19,7 +19,16 @@ import type { RequestFn } from '../client';
 class EvalRunsResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/evals/{eval_id}/runs */
+  /**
+   * Start a new run of an eval.
+   *
+   * @param evalId - The id of the parent eval definition.
+   * @param params - Run params: `name`, `data_source`, `metadata`, etc.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The created `EvalRunObject`.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   create(
     evalId: string,
     params: EvalRunCreateParams,
@@ -33,7 +42,16 @@ class EvalRunsResource {
     });
   }
 
-  /** GET /v1/evals/{eval_id}/runs */
+  /**
+   * List runs for an eval (paginated).
+   *
+   * @param evalId - The id of the parent eval definition.
+   * @param params - Pagination/filter params (`after`, `limit`, `status`, etc.).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalRunListResponse` page of runs.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   list(
     evalId: string,
     params: EvalRunListParams = {},
@@ -52,7 +70,16 @@ class EvalRunsResource {
     });
   }
 
-  /** GET /v1/evals/{eval_id}/runs/{run_id} */
+  /**
+   * Retrieve a specific eval run.
+   *
+   * @param evalId - The id of the parent eval definition.
+   * @param runId - The id of the run.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `EvalRunObject` with current status and results.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   retrieve(
     evalId: string,
     runId: string,
@@ -65,7 +92,19 @@ class EvalRunsResource {
     });
   }
 
-  /** POST /v1/evals/{eval_id}/runs/{run_id} */
+  /**
+   * Cancel an in-progress eval run.
+   *
+   * Note: this is the OpenAI-compatible POST on the run resource, which the
+   * proxy treats as a cancel signal.
+   *
+   * @param evalId - The id of the parent eval definition.
+   * @param runId - The id of the run to cancel.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalRunCancelResponse` reflecting the cancelled state.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   cancel(
     evalId: string,
     runId: string,
@@ -78,7 +117,16 @@ class EvalRunsResource {
     });
   }
 
-  /** DELETE /v1/evals/{eval_id}/runs/{run_id} */
+  /**
+   * Delete an eval run and its results.
+   *
+   * @param evalId - The id of the parent eval definition.
+   * @param runId - The id of the run to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalRunDeleteResponse` confirming removal.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   delete(
     evalId: string,
     runId: string,
@@ -99,7 +147,19 @@ export class EvalsResource {
     this.runs = new EvalRunsResource(request);
   }
 
-  /** POST /v1/evals */
+  /**
+   * Create a new eval definition.
+   *
+   * Defines the testing criteria; runs against this eval are created via
+   * `runs.create`.
+   *
+   * @param params - Eval definition: `name`, `data_source_config`,
+   *   `testing_criteria`, optional `metadata`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `EvalObject`.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   create(params: EvalCreateParams, options?: RequestOptions): Promise<EvalObject> {
     return this.request<EvalObject>({
       method: 'POST',
@@ -109,7 +169,15 @@ export class EvalsResource {
     });
   }
 
-  /** GET /v1/evals */
+  /**
+   * List eval definitions (paginated).
+   *
+   * @param params - Pagination filters (`after`, `limit`, `order`, etc.).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalListResponse` page of eval definitions.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   list(params: EvalListParams = {}, options?: RequestOptions): Promise<EvalListResponse> {
     return this.request<EvalListResponse>({
       method: 'GET',
@@ -124,7 +192,15 @@ export class EvalsResource {
     });
   }
 
-  /** GET /v1/evals/{eval_id} */
+  /**
+   * Retrieve an eval definition by id.
+   *
+   * @param evalId - The id of the eval.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `EvalObject`.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   retrieve(evalId: string, options?: RequestOptions): Promise<EvalObject> {
     return this.request<EvalObject>({
       method: 'GET',
@@ -133,7 +209,16 @@ export class EvalsResource {
     });
   }
 
-  /** POST /v1/evals/{eval_id} */
+  /**
+   * Update an eval definition's metadata or configuration.
+   *
+   * @param evalId - The id of the eval to update.
+   * @param params - Fields to update.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated `EvalObject`.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   update(
     evalId: string,
     params: EvalUpdateParams,
@@ -147,7 +232,15 @@ export class EvalsResource {
     });
   }
 
-  /** DELETE /v1/evals/{eval_id} */
+  /**
+   * Delete an eval definition and its associated runs.
+   *
+   * @param evalId - The id of the eval to delete.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalDeleteResponse` confirming removal.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   delete(evalId: string, options?: RequestOptions): Promise<EvalDeleteResponse> {
     return this.request<EvalDeleteResponse>({
       method: 'DELETE',
@@ -156,7 +249,15 @@ export class EvalsResource {
     });
   }
 
-  /** POST /v1/evals/{eval_id}/cancel */
+  /**
+   * Cancel any in-progress runs associated with an eval.
+   *
+   * @param evalId - The id of the eval whose runs to cancel.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `EvalCancelResponse` describing the cancellation.
+   *
+   * @see https://docs.litellm.ai/docs/evals_api
+   */
   cancel(evalId: string, options?: RequestOptions): Promise<EvalCancelResponse> {
     return this.request<EvalCancelResponse>({
       method: 'POST',

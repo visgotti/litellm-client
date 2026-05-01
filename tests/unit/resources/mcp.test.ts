@@ -9,7 +9,7 @@ describe('McpResource', () => {
 
   beforeEach(() => {
     request = jest.fn().mockResolvedValue({});
-    r = new McpResource(request as any);
+    r = new McpResource(request as any, jest.fn() as any);
   });
 
   // ── tools ─────────────────────────────────────────────────────────────────
@@ -63,6 +63,14 @@ describe('McpResource', () => {
     expect(arg.options.query).toEqual({ query: 'github', category: 'devtools' });
   });
 
+  it('registry.discover works with no params (default {})', async () => {
+    await r.registry.discover();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/mcp/discover');
+    expect(arg.options.query).toEqual({});
+  });
+
   // ── user credentials ──────────────────────────────────────────────────────
 
   it('userCredentials.list GETs /mcp/user-credentials', async () => {
@@ -95,6 +103,14 @@ describe('McpResource', () => {
     expect(arg.options.query).toEqual({ team_id: 't1' });
   });
 
+  it('servers.list works with no params (default {})', async () => {
+    await r.servers.list();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/mcp/server');
+    expect(arg.options.query).toEqual({});
+  });
+
   it('servers.add POSTs /mcp/server', async () => {
     const params = { server_name: 'srv', url: 'http://x', transport: 'http' as const };
     await r.servers.add(params);
@@ -125,6 +141,14 @@ describe('McpResource', () => {
     expect(arg.method).toBe('GET');
     expect(arg.path).toBe('/mcp/server/health');
     expect(arg.options.query).toEqual({ server_ids: ['s1', 's2'] });
+  });
+
+  it('servers.health works with no params (default {})', async () => {
+    await r.servers.health();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/mcp/server/health');
+    expect(arg.options.query).toEqual({});
   });
 
   it('servers.register POSTs /mcp/server/register', async () => {
@@ -167,6 +191,17 @@ describe('McpResource', () => {
     );
   });
 
+  it('servers.rejectSubmission works with no params (default {})', async () => {
+    await r.servers.rejectSubmission('s1');
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'PUT',
+        path: '/mcp/server/s1/reject',
+        body: { kind: 'json', value: {} },
+      }),
+    );
+  });
+
   it('servers.retrieve GETs /mcp/server/{id}', async () => {
     await r.servers.retrieve('s1');
     expect(request).toHaveBeenCalledWith(
@@ -178,6 +213,24 @@ describe('McpResource', () => {
     await r.servers.delete('s1');
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({ method: 'DELETE', path: '/mcp/server/s1' }),
+    );
+  });
+
+  it('servers.deleteV1 DELETEs /v1/mcp/server/{id}', async () => {
+    await r.servers.deleteV1('s1');
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'DELETE', path: '/v1/mcp/server/s1' }),
+    );
+  });
+
+  it('servers.protocol.oauthSessionV1 POSTs /v1/mcp/server/oauth/session', async () => {
+    await r.servers.protocol.oauthSessionV1({ server_id: 's1' });
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'POST',
+        path: '/v1/mcp/server/oauth/session',
+        body: { kind: 'json', value: { server_id: 's1' } },
+      }),
     );
   });
 
@@ -319,6 +372,59 @@ describe('McpResource', () => {
     await r.toolsets.remove('ts1');
     expect(request).toHaveBeenCalledWith(
       expect.objectContaining({ method: 'DELETE', path: '/mcp/toolset/ts1' }),
+    );
+  });
+
+  it('toolsets.deleteV1 DELETEs /v1/mcp/toolset/{id}', async () => {
+    await r.toolsets.deleteV1('ts1');
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'DELETE', path: '/v1/mcp/toolset/ts1' }),
+    );
+  });
+
+  // ── REST shell ────────────────────────────────────────────────────────
+
+  it('rest.listTools GETs /mcp-rest/tools/list', async () => {
+    await r.rest.listTools();
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', path: '/mcp-rest/tools/list' }),
+    );
+  });
+
+  it('rest.listTools forwards server_id query', async () => {
+    await r.rest.listTools({ server_id: 's1' });
+    const arg = request.mock.calls[0][0];
+    expect(arg.options.query).toMatchObject({ server_id: 's1' });
+  });
+
+  it('rest.callTool POSTs /mcp-rest/tools/call', async () => {
+    await r.rest.callTool({ name: 'foo', arguments: {} });
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'POST',
+        path: '/mcp-rest/tools/call',
+        body: { kind: 'json', value: { name: 'foo', arguments: {} } },
+      }),
+    );
+  });
+
+  it('rest.testConnection POSTs /mcp-rest/test/connection', async () => {
+    await r.rest.testConnection({ alias: 's' } as any);
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'POST',
+        path: '/mcp-rest/test/connection',
+      }),
+    );
+  });
+
+  it('rest.testToolsList POSTs /mcp-rest/test/tools/list', async () => {
+    await r.rest.testToolsList({ alias: 's' } as any);
+    expect(request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: 'POST',
+        path: '/mcp-rest/test/tools/list',
+      }),
     );
   });
 });

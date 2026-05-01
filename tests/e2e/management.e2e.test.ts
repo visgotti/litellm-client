@@ -4,43 +4,33 @@
  * E2E tests against a live LiteLLM proxy in Docker for management resources:
  * organizations, tags, credentials (+ vault overrides), guardrails.
  *
- * Many endpoints either succeed or return a structured error when the underlying
- * feature isn't configured in the proxy (e.g. no guardrails registered, no Vault
- * connection). Tests assert one or the other to verify request marshalling.
+ * Assertion policy (see `_assertions.ts`):
+ *   - Every test commits to ONE outcome: success-with-shape OR a single
+ *     typed error status. No "either" helpers, no status allow-lists.
+ *   - Native JS errors (TypeError, ConnectionError, etc.) fail the test —
+ *     a regression in request marshalling must produce a red test.
+ *   - If reality diverges from the pinned outcome, the test fails and either
+ *     the test or the proxy config gets fixed. The test does not absorb
+ *     environmental ambiguity by going looser.
  */
-import { LiteLLMProxyClient } from '../../src/client';
-import { LiteLLMProxyError } from '../../src/errors';
+import { LiteLLMClient } from '../../src/client';
+import { expectTypedError } from './_assertions';
 
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-let client: LiteLLMProxyClient;
+let client: LiteLLMClient;
 const uniq = (p: string) => `${p}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+const today = (): string => new Date().toISOString().slice(0, 10);
 
 beforeAll(() => {
-  client = new LiteLLMProxyClient({
+  client = new LiteLLMClient({
     baseUrl: PROXY_URL,
     apiKey: MASTER_KEY,
     timeout: 90_000,
     maxRetries: 1,
   });
 });
-
-// Helper: assert call resolved OR rejected with a structured error (typed marshalling worked).
-async function eitherOrStructuredError(p: Promise<unknown>): Promise<unknown> {
-  try {
-    return await p;
-  } catch (err) {
-    expect(err).toBeTruthy();
-    return err;
-  }
-}
-
-const today = (): string => new Date().toISOString().slice(0, 10);
-
-// Quiet the unused-import lint — we keep the import so callers that want to
-// narrow on err instanceof LiteLLMProxyError have it ready.
-void LiteLLMProxyError;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Organizations
@@ -57,19 +47,26 @@ describe('Organizations', () => {
       models: ['fake-openai-chat'],
       metadata: { env: 'e2e' },
     });
-    expect(typeof r.organization_id).toBe('string');
+    expect(r).toMatchObject({
+      organization_id: expect.any(String),
+      models: expect.arrayContaining(['fake-openai-chat']),
+    });
     orgId = r.organization_id;
   });
 
   it('reads organization info', async () => {
     if (!orgId) throw new Error('precondition failed');
     const r = await client.organizations.info(orgId);
-    expect(r.organization_id).toBe(orgId);
+    expect(r).toMatchObject({ organization_id: orgId });
+    expect(Array.isArray(r.members)).toBe(true);
+    expect(Array.isArray(r.teams)).toBe(true);
   });
 
   it('lists organizations', async () => {
     const r = await client.organizations.list();
     expect(Array.isArray(r)).toBe(true);
+    expect(r.length).toBeGreaterThan(0);
+    expect(r[0]).toMatchObject({ organization_id: expect.any(String) });
   });
 
   it('updates an organization (PATCH)', async () => {
@@ -78,64 +75,56 @@ describe('Organizations', () => {
       organization_id: orgId,
       max_budget: 200,
     });
-    expect(r.organization_id).toBe(orgId);
+    expect(r).toMatchObject({ organization_id: orgId });
   });
 
-  it('adds a member (best effort)', async () => {
+  it('adds a member', async () => {
     if (!orgId) throw new Error('precondition failed');
     const u = await client.users.create({
       user_email: `${uniq('orgmember')}@example.com`,
       user_role: 'internal_user',
     });
+    expect(u).toMatchObject({ user_id: expect.any(String) });
     memberUserId = u.user_id;
-    const result = await eitherOrStructuredError(
-      client.organizations.addMember({
-        organization_id: orgId,
-        member: { user_id: memberUserId, role: 'internal_user' },
-      }),
-    );
-    expect(result).toBeDefined();
+    const r = await client.organizations.addMember({
+      organization_id: orgId,
+      member: { user_id: memberUserId, role: 'internal_user' },
+    });
+    expect(r).toMatchObject({ organization_id: orgId });
+    expect(Array.isArray(r.updated_organization_memberships)).toBe(true);
   });
 
-  it('updates a member (best effort)', async () => {
+  it('updates a member', async () => {
     if (!orgId || !memberUserId) throw new Error('precondition failed');
-    const result = await eitherOrStructuredError(
-      client.organizations.updateMember({
-        organization_id: orgId,
-        user_id: memberUserId,
-        role: 'org_admin',
-      }),
-    );
-    expect(result).toBeDefined();
+    const r = await client.organizations.updateMember({
+      organization_id: orgId,
+      user_id: memberUserId,
+      role: 'org_admin',
+    });
+    expect(r).toMatchObject({ user_id: memberUserId, organization_id: orgId });
   });
 
-  it('deletes a member (best effort)', async () => {
+  it('deletes a member', async () => {
     if (!orgId || !memberUserId) throw new Error('precondition failed');
-    const result = await eitherOrStructuredError(
-      client.organizations.deleteMember({
-        organization_id: orgId,
-        user_id: memberUserId,
-      }),
-    );
-    expect(result).toBeDefined();
+    const r = await client.organizations.deleteMember({
+      organization_id: orgId,
+      user_id: memberUserId,
+    });
+    expect(r).toMatchObject({ user_id: memberUserId, organization_id: orgId });
   });
 
-  it('returns daily activity (tolerate empty)', async () => {
-    const result = await eitherOrStructuredError(
-      client.organizations.dailyActivity({
-        start_date: today(),
-        end_date: today(),
-      }),
-    );
-    expect(result).toBeDefined();
+  it('returns daily activity', async () => {
+    const r = await client.organizations.dailyActivity({
+      start_date: today(),
+      end_date: today(),
+    });
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('infoLegacy POST /organization/info (best effort)', async () => {
+  it('infoLegacy POST /organization/info', async () => {
     if (!orgId) throw new Error('precondition failed');
-    const result = await eitherOrStructuredError(
-      client.organizations.infoLegacy({ organizations: [orgId] }),
-    );
-    expect(result).toBeDefined();
+    const r = await client.organizations.infoLegacy({ organizations: [orgId] });
+    expect(Array.isArray(r)).toBe(true);
   });
 
   it('deletes an organization', async () => {
@@ -169,21 +158,26 @@ describe('Organizations', () => {
 describe('Tags', () => {
   const tagName = uniq('tag');
 
-  it('creates a tag (best effort — may 500 in vanilla deploy)', async () => {
-    const r = await eitherOrStructuredError(
+  it('creates a tag rejects 500 (vanilla LiteLLM proxy lacks the tag table)', async () => {
+    // The OSS proxy raises an InternalServerError on tag/new because the tag
+    // budget table is gated behind the enterprise build. Pinned so a future
+    // OSS fix will fail the test loudly and we can flip it to expectShape.
+    await expectTypedError(
       client.tags.create({
         name: tagName,
         description: 'e2e tag',
         models: ['fake-openai-chat'],
         max_budget: 50,
       }),
+      500,
     );
-    expect(r).toBeDefined();
   });
 
   it('reads tag info', async () => {
     const r = await client.tags.info({ names: [tagName] });
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({
+      [tagName]: { name: tagName },
+    });
   });
 
   it('updates a tag', async () => {
@@ -193,7 +187,7 @@ describe('Tags', () => {
       models: ['fake-openai-chat'],
       max_budget: 100,
     });
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({});
   });
 
   it('lists tags', async () => {
@@ -201,50 +195,53 @@ describe('Tags', () => {
     expect(Array.isArray(r)).toBe(true);
   });
 
-  it('returns daily activity (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.tags.dailyActivity({ start_date: today(), end_date: today() }),
-    );
-    expect(result).toBeDefined();
+  it('returns daily activity', async () => {
+    const r = await client.tags.dailyActivity({
+      start_date: today(),
+      end_date: today(),
+    });
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns distinct tags (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.tags.distinct());
-    expect(result).toBeDefined();
+  it('returns distinct tags', async () => {
+    const r = await client.tags.distinct();
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns DAU (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.tags.dau());
-    expect(result).toBeDefined();
+  it('returns DAU', async () => {
+    const r = await client.tags.dau();
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns WAU (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.tags.wau());
-    expect(result).toBeDefined();
+  it('returns WAU', async () => {
+    const r = await client.tags.wau();
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns MAU (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.tags.mau());
-    expect(result).toBeDefined();
+  it('returns MAU', async () => {
+    const r = await client.tags.mau();
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns summary (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.tags.summary({ start_date: today(), end_date: today() }),
-    );
-    expect(result).toBeDefined();
+  it('returns summary', async () => {
+    const r = await client.tags.summary({ start_date: today(), end_date: today() });
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
-  it('returns user-agent per-user analytics (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.tags.userAgentPerUserAnalytics({ page: 1, page_size: 10 }),
-    );
-    expect(result).toBeDefined();
+  it('returns user-agent per-user analytics', async () => {
+    const r = await client.tags.userAgentPerUserAnalytics({ page: 1, page_size: 10 });
+    expect(r).toMatchObject({
+      page: 1,
+      page_size: 10,
+      total_count: expect.any(Number),
+      total_pages: expect.any(Number),
+    });
+    expect(Array.isArray(r.results)).toBe(true);
   });
 
   it('deletes a tag', async () => {
     const r = await client.tags.delete({ name: tagName });
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({});
   });
 
   afterAll(async () => {
@@ -269,40 +266,50 @@ describe('Credentials', () => {
       credential_info: { custom_llm_provider: 'openai' },
       credential_values: { api_key: 'sk-test' },
     });
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({ success: true, message: expect.any(String) });
   });
 
   it('lists credentials', async () => {
     const r = await client.credentials.list();
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({ success: true });
     expect(Array.isArray(r.credentials)).toBe(true);
+    const item = r.credentials.find((c) => c.credential_name === credentialName);
+    expect(item).toMatchObject({
+      credential_name: credentialName,
+      credential_info: expect.any(Object),
+    });
   });
 
   it('reads a credential by name', async () => {
     const r = await client.credentials.getByName(credentialName);
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({
+      credential_name: credentialName,
+      credential_info: expect.any(Object),
+    });
   });
 
-  it('reads a credential by model id (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('reads a credential by model id (404 — bogus id)', async () => {
+    await expectTypedError(
       client.credentials.getByModel('definitely-not-a-real-model-id'),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('updates a credential (best effort)', async () => {
-    const r = await eitherOrStructuredError(
+  it('updates a credential rejects 422 (PATCH validation fails on this payload)', async () => {
+    // The OSS proxy rejects this PATCH body with a 422 (unprocessable entity).
+    // Pinned so we fail loudly if the validation rules change.
+    await expectTypedError(
       client.credentials.update(credentialName, {
         credential_info: { custom_llm_provider: 'openai', description: 'updated' },
         credential_values: { api_key: 'sk-test-2' },
       }),
+      422,
     );
-    expect(r).toBeDefined();
   });
 
   it('deletes a credential', async () => {
     const r = await client.credentials.delete(credentialName);
-    expect(r).toBeDefined();
+    expect(r).toMatchObject({ success: true, message: expect.any(String) });
   });
 
   afterAll(async () => {
@@ -315,31 +322,38 @@ describe('Credentials', () => {
 });
 
 describe('Credentials: Vault overrides', () => {
-  it('vault.set (best effort — Vault unconfigured)', async () => {
-    const result = await eitherOrStructuredError(
+  // Vault is not configured in the test proxy. Each call must reject with
+  // a single specific status — no allow-lists.
+
+  it('vault.set rejects 500 (Vault unreachable at fake address)', async () => {
+    await expectTypedError(
       client.credentials.vault.set({
         vault_addr: 'http://localhost:8200',
         vault_token: 'fake-token',
       }),
+      500,
     );
-    expect(result).toBeDefined();
   });
 
-  it('vault.get (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.credentials.vault.get());
-    expect(result).toBeDefined();
+  it('vault.get returns the (empty) override config', async () => {
+    const r = await client.credentials.vault.get();
+    expect(r).toMatchObject({
+      config_type: expect.any(String),
+      values: expect.any(Object),
+      field_schema: expect.any(Object),
+    });
   });
 
-  it('vault.testConnection (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.credentials.vault.testConnection(),
-    );
-    expect(result).toBeDefined();
+  it('vault.testConnection rejects 400 when no Vault config saved', async () => {
+    await expectTypedError(client.credentials.vault.testConnection(), 400);
   });
 
-  it('vault.delete (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.credentials.vault.delete());
-    expect(result).toBeDefined();
+  it('vault.delete clears the override config', async () => {
+    const r = await client.credentials.vault.delete();
+    expect(r).toMatchObject({
+      message: expect.any(String),
+      status: expect.any(String),
+    });
   });
 });
 
@@ -349,221 +363,223 @@ describe('Credentials: Vault overrides', () => {
 
 describe('Guardrails', () => {
   const guardrailName = uniq('guardrail');
-  let createdId: string | undefined;
+  let createdId: string;
 
   it('lists guardrails', async () => {
     const r = await client.guardrails.list();
-    expect(r).toBeDefined();
     expect(Array.isArray(r.guardrails)).toBe(true);
   });
 
   it('lists guardrails (v2)', async () => {
     const r = await client.guardrails.listV2();
-    expect(r).toBeDefined();
     expect(Array.isArray(r.guardrails)).toBe(true);
   });
 
-  it('creates a guardrail (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.create({
-        guardrail: {
-          guardrail_name: guardrailName,
-          litellm_params: {
-            guardrail: 'custom_code',
-            mode: 'pre_call',
-            default_on: false,
-          },
+  it('creates a guardrail', async () => {
+    const r = await client.guardrails.create({
+      guardrail: {
+        guardrail_name: guardrailName,
+        litellm_params: {
+          guardrail: 'custom_code',
+          mode: 'pre_call',
+          default_on: false,
         },
-      }),
+      },
+    });
+    expect(r).toMatchObject({
+      guardrail_id: expect.any(String),
+      guardrail_name: guardrailName,
+    });
+    createdId = r.guardrail_id as string;
+  });
+
+  it('retrieves a guardrail', async () => {
+    const r = await client.guardrails.retrieve(createdId);
+    expect(r).toMatchObject({ guardrail_name: guardrailName });
+  });
+
+  it('retrieve rejects 404 for bogus id', async () => {
+    await expectTypedError(
+      client.guardrails.retrieve('nonexistent-guardrail'),
+      404,
     );
-    if (
-      result &&
-      typeof result === 'object' &&
-      'guardrail_id' in result &&
-      typeof (result as { guardrail_id?: unknown }).guardrail_id === 'string'
-    ) {
-      createdId = (result as { guardrail_id: string }).guardrail_id;
-    }
-    expect(result).toBeDefined();
   });
 
-  it('retrieves a guardrail (best effort)', async () => {
-    const id = createdId ?? 'nonexistent-guardrail';
-    const result = await eitherOrStructuredError(client.guardrails.retrieve(id));
-    expect(result).toBeDefined();
+  it('returns guardrail info', async () => {
+    const r = await client.guardrails.info(createdId);
+    expect(r).toMatchObject({ guardrail_name: guardrailName });
   });
 
-  it('returns guardrail info (best effort)', async () => {
-    const id = createdId ?? 'nonexistent-guardrail';
-    const result = await eitherOrStructuredError(client.guardrails.info(id));
-    expect(result).toBeDefined();
+  it('info rejects 404 for bogus id', async () => {
+    await expectTypedError(
+      client.guardrails.info('nonexistent-guardrail'),
+      404,
+    );
   });
 
-  it('updates a guardrail (best effort)', async () => {
-    const id = createdId ?? 'nonexistent-guardrail';
-    const result = await eitherOrStructuredError(
-      client.guardrails.update(id, {
-        guardrail: {
-          guardrail_name: guardrailName,
-          litellm_params: {
-            guardrail: 'custom_code',
-            mode: 'pre_call',
-            default_on: true,
-          },
+  it('updates a guardrail', async () => {
+    const r = await client.guardrails.update(createdId, {
+      guardrail: {
+        guardrail_name: guardrailName,
+        litellm_params: {
+          guardrail: 'custom_code',
+          mode: 'pre_call',
+          default_on: true,
         },
-      }),
-    );
-    expect(result).toBeDefined();
+      },
+    });
+    expect(r).toMatchObject({ guardrail_name: guardrailName });
   });
 
-  it('patches a guardrail (best effort)', async () => {
-    const id = createdId ?? 'nonexistent-guardrail';
-    const result = await eitherOrStructuredError(
-      client.guardrails.patch(id, {
-        guardrail_info: { description: 'patched in e2e' },
-      }),
-    );
-    expect(result).toBeDefined();
+  it('patches a guardrail', async () => {
+    const r = await client.guardrails.patch(createdId, {
+      guardrail_info: { description: 'patched in e2e' },
+    });
+    expect(r).toMatchObject({ guardrail_name: expect.any(String) });
   });
 
-  it('deletes a guardrail (best effort)', async () => {
-    const id = createdId ?? 'nonexistent-guardrail';
-    const result = await eitherOrStructuredError(client.guardrails.delete(id));
-    expect(result).toBeDefined();
-    createdId = undefined;
-  });
-
-  it('registers a guardrail (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('register rejects 400 with a master key (registration requires a team-scoped key)', async () => {
+    await expectTypedError(
       client.guardrails.register({
         guardrail_name: uniq('reg'),
         litellm_params: { guardrail: 'custom_code', mode: 'pre_call' },
       }),
+      400,
     );
-    expect(result).toBeDefined();
   });
 
-  it('lists submissions (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.guardrails.listSubmissions());
-    expect(result).toBeDefined();
+  it('lists submissions', async () => {
+    const r = await client.guardrails.listSubmissions();
+    expect(r).toMatchObject({
+      summary: {
+        total: expect.any(Number),
+        pending_review: expect.any(Number),
+        active: expect.any(Number),
+        rejected: expect.any(Number),
+      },
+    });
+    expect(Array.isArray(r.submissions)).toBe(true);
   });
 
-  it('retrieves a submission (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('retrieveSubmission rejects 404 for bogus id', async () => {
+    await expectTypedError(
       client.guardrails.retrieveSubmission('nonexistent-submission'),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('approves a submission (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('approveSubmission rejects 404 for bogus id', async () => {
+    await expectTypedError(
       client.guardrails.approveSubmission('nonexistent-submission'),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('rejects a submission (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('rejectSubmission rejects 404 for bogus id', async () => {
+    await expectTypedError(
       client.guardrails.rejectSubmission('nonexistent-submission'),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('returns UI add-guardrail settings (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.guardrails.uiSettings());
-    expect(result).toBeDefined();
+  it('returns UI add-guardrail settings', async () => {
+    const r = await client.guardrails.uiSettings();
+    expect(Array.isArray(r.supported_entities)).toBe(true);
+    expect(Array.isArray(r.supported_actions)).toBe(true);
+    expect(Array.isArray(r.supported_modes)).toBe(true);
+    expect(Array.isArray(r.pii_entity_categories)).toBe(true);
   });
 
-  it('returns UI category yaml (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.uiCategoryYaml('default'),
+  it('uiCategoryYaml rejects 404 for unknown category', async () => {
+    // 'default' is not a registered category in the OSS distribution.
+    await expectTypedError(client.guardrails.uiCategoryYaml('default'), 404);
+  });
+
+  it('returns UI major airlines', async () => {
+    const r = await client.guardrails.uiMajorAirlines();
+    expect(Array.isArray(r.airlines)).toBe(true);
+  });
+
+  it('returns UI provider-specific params', async () => {
+    const r = await client.guardrails.uiProviderSpecificParams();
+    expect(typeof r).toBe('object');
+    expect(r).not.toBeNull();
+  });
+
+  it('validates a blocked-words file', async () => {
+    const r = await client.guardrails.validateBlockedWordsFile({
+      file_content: 'badword1\nbadword2\n',
+    });
+    expect(r).toMatchObject({ valid: expect.any(Boolean) });
+  });
+
+  it('tests custom code', async () => {
+    const r = await client.guardrails.testCustomCode({
+      custom_code: 'def hook(*args, **kwargs):\n    return None\n',
+      test_input: { messages: [{ role: 'user', content: 'hi' }] },
+      input_type: 'request',
+    });
+    expect(r).toMatchObject({ success: expect.any(Boolean) });
+  });
+
+  it('apply rejects 404 when guardrail name is unknown', async () => {
+    await expectTypedError(
+      client.guardrails.apply({ guardrail_name: 'definitely-not-real', text: 'hello' }),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('returns UI major airlines (best effort)', async () => {
-    const result = await eitherOrStructuredError(client.guardrails.uiMajorAirlines());
-    expect(result).toBeDefined();
+  it('returns usage overview', async () => {
+    const r = await client.guardrails.usageOverview({
+      start_date: today(),
+      end_date: today(),
+    });
+    expect(typeof r).toBe('object');
+    expect(r).not.toBeNull();
   });
 
-  it('returns UI provider-specific params (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.uiProviderSpecificParams(),
-    );
-    expect(result).toBeDefined();
-  });
-
-  it('validates a blocked-words file (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.validateBlockedWordsFile({
-        file_content: 'badword1\nbadword2\n',
-      }),
-    );
-    expect(result).toBeDefined();
-  });
-
-  it('tests custom code (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.testCustomCode({
-        custom_code: 'def hook(*args, **kwargs):\n    return None\n',
-        test_input: { messages: [{ role: 'user', content: 'hi' }] },
-        input_type: 'request',
-      }),
-    );
-    expect(result).toBeDefined();
-  });
-
-  it('runs guardrail apply (best effort — may not have guardrails configured)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.apply({ guardrail_name: 'test', text: 'hello' }),
-    );
-    expect(result).toBeDefined();
-  });
-
-  it('returns usage overview (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.usageOverview({
-        start_date: today(),
-        end_date: today(),
-      }),
-    );
-    expect(result).toBeDefined();
-  });
-
-  it('returns usage detail (best effort)', async () => {
-    const result = await eitherOrStructuredError(
+  it('usageDetail rejects 404 for bogus guardrail name', async () => {
+    await expectTypedError(
       client.guardrails.usageDetail('nonexistent-guardrail', {
         start_date: today(),
         end_date: today(),
       }),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
-  it('returns usage logs (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.usageLogs({ page: 1, page_size: 10 }),
-    );
-    expect(result).toBeDefined();
+  it('returns usage logs', async () => {
+    const r = await client.guardrails.usageLogs({ page: 1, page_size: 10 });
+    expect(typeof r).toBe('object');
+    expect(r).not.toBeNull();
   });
 
-  it('returns policies usage overview (best effort)', async () => {
-    const result = await eitherOrStructuredError(
-      client.guardrails.policiesUsageOverview({
-        start_date: today(),
-        end_date: today(),
-      }),
+  it('returns policies usage overview', async () => {
+    const r = await client.guardrails.policiesUsageOverview({
+      start_date: today(),
+      end_date: today(),
+    });
+    expect(typeof r).toBe('object');
+    expect(r).not.toBeNull();
+  });
+
+  it('deletes a guardrail', async () => {
+    const r = await client.guardrails.delete(createdId);
+    expect(r).toMatchObject({});
+  });
+
+  it('delete rejects 404 for bogus id', async () => {
+    await expectTypedError(
+      client.guardrails.delete('nonexistent-guardrail'),
+      404,
     );
-    expect(result).toBeDefined();
   });
 
   afterAll(async () => {
-    if (createdId) {
-      try {
-        await client.guardrails.delete(createdId);
-      } catch {
-        /* ignore */
-      }
+    try {
+      if (createdId) await client.guardrails.delete(createdId);
+    } catch {
+      /* ignore */
     }
   });
 });

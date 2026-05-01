@@ -116,6 +116,22 @@ describe('AgentsResource', () => {
     );
   });
 
+  it('list works with no params (default {})', async () => {
+    await r.list();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/v1/agents');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('dailyActivity works with no params (default {})', async () => {
+    await r.dailyActivity();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/agent/daily/activity');
+    expect(arg.options.query).toEqual({});
+  });
+
   it('dailyActivity GETs /agent/daily/activity with query params', async () => {
     await r.dailyActivity({
       agent_ids: 'a1,a2',

@@ -1,7 +1,6 @@
 import type {
   ImageGenerateParams,
   ImageEditParams,
-  ImageVariationParams,
   ImageResponse,
 } from '../types/images';
 import type { RequestOptions } from '../types/request-options';
@@ -11,7 +10,17 @@ import { toBlob } from '../internal/form';
 export class ImagesResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/images/generations */
+  /**
+   * Generate one or more images from a text prompt.
+   *
+   * @param params - Image generation request body, including `prompt`, `model`,
+   *   `n`, `size`, `quality`, `style`, and `response_format`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `ImageResponse` containing the generated images as URLs or
+   *   base64 strings depending on `response_format`.
+   *
+   * @see https://docs.litellm.ai/docs/image_generation
+   */
   generate(params: ImageGenerateParams, options?: RequestOptions): Promise<ImageResponse> {
     return this.request<ImageResponse>({
       method: 'POST',
@@ -21,7 +30,21 @@ export class ImagesResource {
     });
   }
 
-  /** POST /v1/images/edits */
+  /**
+   * Edit an existing image using a text prompt and an optional mask.
+   *
+   * Sent as a multipart upload. `params.image` may be a single image or an
+   * array; when it's an array each entry is appended as `image[]`. An optional
+   * `params.mask` (PNG with alpha) selects the region to edit.
+   *
+   * @param params - Image edit request: source `image`, `prompt`, optional
+   *   `mask`, plus `model`, `n`, `size`, `response_format`, `user`, and the
+   *   transport hints `filename`/`contentType`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns An `ImageResponse` containing the edited image(s).
+   *
+   * @see https://docs.litellm.ai/docs/image_edits
+   */
   edit(params: ImageEditParams, options?: RequestOptions): Promise<ImageResponse> {
     const form = new FormData();
     const ct = params.contentType ?? 'image/png';
@@ -46,21 +69,4 @@ export class ImagesResource {
     });
   }
 
-  /** POST /v1/images/variations */
-  variations(params: ImageVariationParams, options?: RequestOptions): Promise<ImageResponse> {
-    const form = new FormData();
-    const ct = params.contentType ?? 'image/png';
-    form.append('image', toBlob(params.image, ct), params.filename ?? 'image.png');
-    if (params.model) form.append('model', params.model);
-    if (params.n !== undefined) form.append('n', String(params.n));
-    if (params.size) form.append('size', params.size);
-    if (params.response_format) form.append('response_format', params.response_format);
-    if (params.user) form.append('user', params.user);
-    return this.request<ImageResponse>({
-      method: 'POST',
-      path: '/v1/images/variations',
-      body: { kind: 'form', value: form },
-      options,
-    });
-  }
 }

@@ -11,7 +11,19 @@ import type { RequestFn } from '../client';
 class FineTuningJobsResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/fine_tuning/jobs */
+  /**
+   * Start a new fine-tuning job.
+   *
+   * The `training_file` (and optional `validation_file`) must be uploaded
+   * via `files.create({ purpose: 'fine-tune' })` first.
+   *
+   * @param params - Fine-tune request: `model`, `training_file`, plus
+   *   optional `hyperparameters`, `suffix`, and provider-specific fields.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The newly created `FineTuningJob`.
+   *
+   * @see https://docs.litellm.ai/docs/fine_tuning
+   */
   create(params: FineTuningCreateParams, options?: RequestOptions): Promise<FineTuningJob> {
     return this.request<FineTuningJob>({
       method: 'POST',
@@ -21,7 +33,15 @@ class FineTuningJobsResource {
     });
   }
 
-  /** GET /v1/fine_tuning/jobs */
+  /**
+   * List fine-tuning jobs (paginated).
+   *
+   * @param params - Pagination filters (`after`, `limit`, etc.).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `FineTuningListResponse` page of jobs.
+   *
+   * @see https://docs.litellm.ai/docs/fine_tuning
+   */
   list(
     params: FineTuningListParams = {},
     options?: RequestOptions,
@@ -39,7 +59,15 @@ class FineTuningJobsResource {
     });
   }
 
-  /** GET /v1/fine_tuning/jobs/{job_id} */
+  /**
+   * Retrieve a fine-tuning job's current state.
+   *
+   * @param jobId - The id returned from `create`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The `FineTuningJob` with status, fine-tuned model id, etc.
+   *
+   * @see https://docs.litellm.ai/docs/fine_tuning
+   */
   retrieve(jobId: string, options?: RequestOptions): Promise<FineTuningJob> {
     return this.request<FineTuningJob>({
       method: 'GET',
@@ -48,7 +76,15 @@ class FineTuningJobsResource {
     });
   }
 
-  /** POST /v1/fine_tuning/jobs/{job_id}/cancel */
+  /**
+   * Cancel a running fine-tuning job.
+   *
+   * @param jobId - The id of the job to cancel.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated `FineTuningJob` reflecting the cancellation.
+   *
+   * @see https://docs.litellm.ai/docs/fine_tuning
+   */
   cancel(jobId: string, options?: RequestOptions): Promise<FineTuningJob> {
     return this.request<FineTuningJob>({
       method: 'POST',
@@ -57,7 +93,16 @@ class FineTuningJobsResource {
     });
   }
 
-  /** GET /v1/fine_tuning/jobs/{job_id}/events */
+  /**
+   * List training events for a fine-tuning job (paginated).
+   *
+   * @param jobId - The id of the job whose events to fetch.
+   * @param params - Pagination filters: `after` cursor and `limit`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `FineTuningEventsResponse` page of training-progress events.
+   *
+   * @see https://docs.litellm.ai/docs/fine_tuning
+   */
   events(
     jobId: string,
     params: { after?: string; limit?: number } = {},

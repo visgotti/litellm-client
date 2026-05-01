@@ -5,7 +5,19 @@ import type { RequestFn } from '../client';
 export class ModerationsResource {
   constructor(private request: RequestFn) {}
 
-  /** POST /v1/moderations */
+  /**
+   * Run content moderation on one or more inputs.
+   *
+   * Returns category flags and scores for unsafe content per OpenAI-compatible
+   * moderation models routed through the proxy.
+   *
+   * @param params - Moderation request body containing `input` (string or
+   *   array) and an optional `model`.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A `ModerationResponse` with one result per input.
+   *
+   * @see https://docs.litellm.ai/docs/moderation
+   */
   create(
     params: ModerationCreateParams,
     options?: RequestOptions,

@@ -34,6 +34,7 @@ import { OcrResource } from './resources/ocr';
 import { SearchResource } from './resources/search';
 import { RagResource } from './resources/rag';
 import { AgentsResource } from './resources/agents';
+import { PromptsResource } from './resources/prompts';
 import { A2AResource } from './resources/a2a';
 import { AnthropicResource } from './resources/anthropic';
 import { GeminiResource } from './resources/gemini';
@@ -42,13 +43,35 @@ import { ComplianceResource } from './resources/compliance';
 import { UtilsResource } from './resources/utils';
 import { CostResource } from './resources/cost';
 import { CacheResource } from './resources/cache';
+import { FallbacksResource } from './resources/fallbacks';
+import { ToolsResource } from './resources/tools';
+import { RouterSettingsResource } from './resources/router_settings';
+import { CallbacksResource } from './resources/callbacks';
+import { PoliciesResource } from './resources/policies';
+import { JwtKeyMappingResource } from './resources/jwt';
+import { AccessGroupsResource } from './resources/access_groups';
+import { ScimResource } from './resources/scim';
+import { PublicResource } from './resources/public';
+import { PassThroughConfigResource } from './resources/pass_through_config';
+import { AuditResource } from './resources/audit';
+import { ClaudeCodeResource } from './resources/claude_code';
+import { CloudZeroResource } from './resources/cloudzero';
+import { VantageResource } from './resources/vantage';
+import { DiscoveryResource } from './resources/discovery';
+import { EmailEventsResource } from './resources/email_events';
+import { MiscResource } from './resources/misc';
+import { ProjectsResource } from './resources/projects';
+import { SettingsResource } from './resources/settings';
+import { UnifiedAccessGroupsResource } from './resources/unified_access_groups';
+import { InteractionsResource } from './resources/interactions';
+import { OpenAIPassthroughResource } from './resources/openai_passthrough';
 import type { RequestOptions } from './types/request-options';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface LiteLLMProxyClientConfig {
+export interface LiteLLMClientConfig {
   /** Base URL of the LiteLLM proxy (e.g. "http://localhost:4000") */
   baseUrl: string;
   /** API key sent via Authorization: Bearer header */
@@ -70,6 +93,7 @@ export interface LiteLLMProxyClientConfig {
 export type RequestBodyKind =
   | { kind: 'json'; value: unknown }
   | { kind: 'form'; value: FormData }
+  | { kind: 'text'; value: string; contentType?: string }
   | { kind: 'binary'; value: ArrayBuffer | Uint8Array | Blob; contentType?: string }
   | { kind: 'none' };
 
@@ -96,7 +120,7 @@ const DEFAULT_TIMEOUT = 60_000;
 const DEFAULT_MAX_RETRIES = 2;
 const RETRIABLE_STATUS_CODES = new Set([408, 409, 429, 500, 502, 503, 504]);
 
-export class LiteLLMProxyClient {
+export class LiteLLMClient {
   readonly chat: ChatResource;
   readonly completions: CompletionsResource;
   readonly embeddings: EmbeddingsResource;
@@ -131,6 +155,7 @@ export class LiteLLMProxyClient {
   readonly search: SearchResource;
   readonly rag: RagResource;
   readonly agents: AgentsResource;
+  readonly prompts: PromptsResource;
   readonly a2a: A2AResource;
   readonly anthropic: AnthropicResource;
   readonly gemini: GeminiResource;
@@ -139,6 +164,28 @@ export class LiteLLMProxyClient {
   readonly utils: UtilsResource;
   readonly cost: CostResource;
   readonly cache: CacheResource;
+  readonly fallbacks: FallbacksResource;
+  readonly tools: ToolsResource;
+  readonly routerSettings: RouterSettingsResource;
+  readonly callbacks: CallbacksResource;
+  readonly policies: PoliciesResource;
+  readonly jwt: JwtKeyMappingResource;
+  readonly accessGroups: AccessGroupsResource;
+  readonly public: PublicResource;
+  readonly passThroughConfig: PassThroughConfigResource;
+  readonly audit: AuditResource;
+  readonly claudeCode: ClaudeCodeResource;
+  readonly cloudzero: CloudZeroResource;
+  readonly vantage: VantageResource;
+  readonly discovery: DiscoveryResource;
+  readonly emailEvents: EmailEventsResource;
+  readonly misc: MiscResource;
+  readonly projects: ProjectsResource;
+  readonly scim: ScimResource;
+  readonly settings: SettingsResource;
+  readonly unifiedAccessGroups: UnifiedAccessGroupsResource;
+  readonly interactions: InteractionsResource;
+  readonly openaiPassthrough: OpenAIPassthroughResource;
 
   private readonly baseUrl: string;
   private readonly apiKey?: string;
@@ -147,7 +194,7 @@ export class LiteLLMProxyClient {
   private readonly defaultHeaders: Record<string, string>;
   private readonly fetchFn: typeof globalThis.fetch;
 
-  constructor(config: LiteLLMProxyClientConfig) {
+  constructor(config: LiteLLMClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, '');
     this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? DEFAULT_TIMEOUT;
@@ -184,8 +231,8 @@ export class LiteLLMProxyClient {
     this.guardrails = new GuardrailsResource(request);
     this.credentials = new CredentialsResource(request);
     this.vectorStores = new VectorStoresResource(request);
-    this.mcp = new McpResource(request);
-    this.containers = new ContainersResource(request);
+    this.mcp = new McpResource(request, streamRequest);
+    this.containers = new ContainersResource(request, rawRequest);
     this.evals = new EvalsResource(request);
     this.realtime = new RealtimeResource(request);
     this.videos = new VideoResource(request, rawRequest);
@@ -193,14 +240,37 @@ export class LiteLLMProxyClient {
     this.search = new SearchResource(request);
     this.rag = new RagResource(request);
     this.agents = new AgentsResource(request);
+    this.prompts = new PromptsResource(request);
     this.a2a = new A2AResource(request);
     this.anthropic = new AnthropicResource(request, streamRequest);
     this.gemini = new GeminiResource(request, streamRequest);
-    this.passThrough = new PassThroughResource(request);
+    this.passThrough = new PassThroughResource(request, streamRequest);
     this.compliance = new ComplianceResource(request);
     this.utils = new UtilsResource(request);
     this.cost = new CostResource(request);
     this.cache = new CacheResource(request);
+    this.fallbacks = new FallbacksResource(request);
+    this.tools = new ToolsResource(request);
+    this.routerSettings = new RouterSettingsResource(request);
+    this.callbacks = new CallbacksResource(request);
+    this.policies = new PoliciesResource(request);
+    this.jwt = new JwtKeyMappingResource(request);
+    this.accessGroups = new AccessGroupsResource(request);
+    this.public = new PublicResource(request);
+    this.passThroughConfig = new PassThroughConfigResource(request);
+    this.audit = new AuditResource(request);
+    this.claudeCode = new ClaudeCodeResource(request);
+    this.cloudzero = new CloudZeroResource(request);
+    this.vantage = new VantageResource(request);
+    this.discovery = new DiscoveryResource(request);
+    this.emailEvents = new EmailEventsResource(request);
+    this.misc = new MiscResource(request, streamRequest);
+    this.projects = new ProjectsResource(request);
+    this.scim = new ScimResource(request);
+    this.settings = new SettingsResource(request);
+    this.unifiedAccessGroups = new UnifiedAccessGroupsResource(request);
+    this.interactions = new InteractionsResource(request);
+    this.openaiPassthrough = new OpenAIPassthroughResource(request);
   }
 
   // ─── Internal: JSON request with retry ───────────────────────────────────
@@ -328,6 +398,9 @@ export class LiteLLMProxyClient {
     } else if (body && body.kind === 'form') {
       delete headers['content-type'];
       delete headers['Content-Type'];
+      fetchBody = body.value;
+    } else if (body && body.kind === 'text') {
+      if (body.contentType) headers['content-type'] = body.contentType;
       fetchBody = body.value;
     } else if (body && body.kind === 'binary') {
       if (body.contentType) headers['content-type'] = body.contentType;

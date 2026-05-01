@@ -71,12 +71,17 @@ describe('UsersResource', () => {
     expect(request.mock.calls[1][0].path).toBe('/user/list');
   });
 
-  it('getUsers() / availableRoles()', async () => {
-    await users.getUsers();
-    expect(request.mock.calls[0][0].path).toBe('/user/get_users');
-
+  it('availableRoles()', async () => {
     await users.availableRoles();
-    expect(request.mock.calls[1][0].path).toBe('/user/available_roles');
+    expect(request.mock.calls[0][0].path).toBe('/user/available_roles');
+  });
+
+  it('availableUsers() GETs /user/available_users', async () => {
+    await users.availableUsers();
+    expect(request.mock.calls[0][0]).toMatchObject({
+      method: 'GET',
+      path: '/user/available_users',
+    });
   });
 
   it('bulkUpdate() POSTs to /user/bulk_update', async () => {

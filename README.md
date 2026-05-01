@@ -1,32 +1,31 @@
-# litellm-proxy
+# litellm-client
 
-[![CI](https://github.com/visgotti/litellm-proxy/actions/workflows/ci.yml/badge.svg)](https://github.com/visgotti/litellm-proxy/actions/workflows/ci.yml)
-[![E2E](https://github.com/visgotti/litellm-proxy/actions/workflows/live-e2e.yml/badge.svg)](https://github.com/visgotti/litellm-proxy/actions/workflows/live-e2e.yml)
-[![Codecov](https://codecov.io/gh/visgotti/litellm-proxy/branch/main/graph/badge.svg)](https://codecov.io/gh/visgotti/litellm-proxy)
-[![npm](https://img.shields.io/npm/v/litellm-proxy.svg)](https://www.npmjs.com/package/litellm-proxy)
+[![CI](https://github.com/visgotti/litellm-client/actions/workflows/ci.yml/badge.svg)](https://github.com/visgotti/litellm-client/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/visgotti/litellm-client/branch/main/graph/badge.svg)](https://codecov.io/gh/visgotti/litellm-client)
+[![npm](https://img.shields.io/npm/v/litellm-client.svg)](https://www.npmjs.com/package/litellm-client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Production-grade TypeScript HTTP client for the [LiteLLM Proxy](https://docs.litellm.ai/docs/proxy/quick_start) server.
 
 - **Zero runtime dependencies** — uses native `fetch` (Node ≥ 18, modern browsers, edge runtimes)
-- **Full surface coverage** — every documented LiteLLM proxy endpoint surfaced as a typed method
+- **Comprehensive endpoint coverage** — typed methods for every documented LiteLLM proxy endpoint group, source-verified against the LiteLLM Pydantic models for endpoints whose docs page isn't yet published
 - **Streaming-aware** — Server-Sent Events with `for await … of`, abortable mid-stream
 - **Robust** — automatic retries with exponential backoff, `Retry-After` honoring, configurable timeout, typed error hierarchy
-- **Strongly typed** — full TS types for every request/response shape
+- **Strongly typed** — TS types for every request/response shape, with `[key: string]: unknown` escape hatches on rapidly-evolving surfaces (RAG, MCP, Search) so unmodelled fields still pass through
 - **Tested** — ≥ 90 % unit-test coverage gate, plus end-to-end suite running the real LiteLLM container against live providers in CI
 
 ## Install
 
 ```bash
-npm install litellm-proxy
+npm install litellm-client
 ```
 
 ## Quick start
 
 ```ts
-import { LiteLLMProxyClient } from 'litellm-proxy';
+import { LiteLLMClient } from 'litellm-client';
 
-const client = new LiteLLMProxyClient({
+const client = new LiteLLMClient({
   baseUrl: 'http://localhost:4000',
   apiKey: 'sk-…',
 });
@@ -71,7 +70,7 @@ for await (const chunk of stream) { /* … */ }
 ## Configuration
 
 ```ts
-new LiteLLMProxyClient({
+new LiteLLMClient({
   baseUrl: string;          // Required — proxy URL (trailing slashes are stripped)
   apiKey?: string;          // Sent as `Authorization: Bearer <apiKey>`
   timeout?: number;         // Per-request timeout in ms (default 60_000)
@@ -116,30 +115,45 @@ The client exposes every documented LiteLLM proxy endpoint group as a typed prop
 | `client.batches` | `create()`, `list()`, `retrieve()`, `cancel()` |
 | `client.files` | `create()`, `list()`, `retrieve()`, `delete()`, `content()` |
 | `client.fineTuning.jobs` | `create()`, `list()`, `retrieve()`, `cancel()`, `events()` |
-| `client.assistants` | `create()`, `list()`, `retrieve()`, `update()`, `delete()` (sets `OpenAI-Beta` header) |
-| `client.assistants.threads` | `create()`, `retrieve()`, `update()`, `delete()` |
-| `client.assistants.threads.messages` | `create()`, `list()` |
-| `client.assistants.threads.runs` | `create()`, `retrieve()`, `cancel()` |
+| `client.assistants` ⚠️ *deprecated by OpenAI; sunsets 2026-08-26 — migrate to `client.responses`* | `create()`, `list()`, `retrieve()`, `update()`, `delete()` (sets `OpenAI-Beta` header) |
+| `client.assistants.threads` ⚠️ deprecated | `create()`, `retrieve()`, `update()`, `delete()` |
+| `client.assistants.threads.messages` ⚠️ deprecated | `create()`, `list()` |
+| `client.assistants.threads.runs` ⚠️ deprecated | `create()`, `retrieve()`, `cancel()` |
 | `client.vectorStores` | full CRUD + file/batch sub-resources |
 | `client.containers` | `create()`, `list()`, `retrieve()`, `delete()` |
+| `client.containers.files` | `create()` (multipart), `list()`, `retrieve()`, `content()`, `delete()` |
 | `client.evals` | full CRUD on evals |
-| `client.realtime` | `createClientSecret()`, `createCall()` |
+| `client.realtime` | `createClientSecret()`, `createCall()` (+ typed event-protocol unions for the WebSocket side) |
 | `client.videos` | `create()`, `list()`, `retrieve()`, `content()`, `remix()`, `edit()`, `extend()`, character endpoints |
 | `client.ocr` | `create()` — JSON document or multipart file |
 | `client.search` | search endpoints |
 | `client.rag` | RAG endpoints |
+| `client.prompts` | `create()`, `list()`, `retrieve()`, `update()`, `delete()`, `versions()`, `info()`, `test()`, `dotpromptJsonConverter()`, `integration()` |
 
 ### Provider-native passthroughs
 
+Every passthrough provider exposes raw `get/post/put/patch/delete` (escape hatch). The starred ones additionally have **typed first-class methods** for their most-used endpoints.
+
 | Property | Description |
 |---|---|
-| `client.anthropic.messages` | Anthropic-native `/v1/messages` and `count_tokens` |
-| `client.anthropic.skills` | Anthropic skills CRUD |
-| `client.gemini` | Gemini-native `generateContent`, `streamGenerateContent`, `countTokens`, `interactions` |
-| `client.passThrough.<provider>` | Generic pass-through for `anthropic`, `gemini`, `vertex`, `cohere`, `mistral`, `vllm`, `milvus`, `bedrock`, `assemblyAi`, `azure`, `openai`, `cursor`, `langfuse` (`get/post/put/patch/delete`) |
-| `client.mcp` | MCP servers, tools, toolsets, access groups, network, registry, user credentials |
+| `client.anthropic.messages` | Anthropic-native `/v1/messages` and `count_tokens` (typed) |
+| `client.anthropic.skills` | Anthropic skills CRUD (multipart upload + auto-injected `anthropic-beta` header) |
+| `client.gemini` | Gemini-native `generateContent`, `streamGenerateContent`, `countTokens`, `interactions` (typed) |
+| `client.passThrough.bedrock` ★ | Typed `converse`, `converseStream` (`Stream<ConverseStreamEvent>`), `invoke`, `invokeWithResponseStream`, `guardrails.apply`, `knowledgeBases.{retrieve, retrieveAndGenerate}`, `agents.invoke` |
+| `client.passThrough.cursor` ★ | Typed `me`, `models`, `repositories`, `agents.{list, launch, get, delete, conversation, followup, stop}` |
+| `client.passThrough.vertex` ★ | Typed `generateContent`, `streamGenerateContent`, `embedContent`, `predict`, `batchPredictionJobs.*` |
+| `client.passThrough.cohere` ★ | Typed `chat`, `chatV2`, `embed`, `rerank`, `classify`, `generate`, `tokenize`, `detokenize` |
+| `client.passThrough.mistral` ★ | Typed `chat.completions.create`, `embeddings.create`, `fim.completions.create`, `agents.completions.create`, `models.list` |
+| `client.passThrough.vllm` ★ | Typed `chat.completions.create`, `completions.create`, `embeddings.create`, `models.list` |
+| `client.passThrough.milvus` ★ | Typed `collections.*`, `entities.*`, `partitions.*`, `indexes.*` (vector DB CRUD) |
+| `client.passThrough.azure` ★ | Typed `chatCompletions`, `completions`, `embeddings`, `images.generations`, `audio.transcriptions` (deployment-routed) |
+| `client.passThrough.langfuse` ★ | Typed `traces.*`, `observations.*`, `spans.*`, `scores.*`, `datasets.*`, `prompts.*` |
+| `client.passThrough.assemblyAi` / `.assemblyAiEu` ★ | Typed `transcript.*`, `lemur.*`, `realtime.token`, `upload` |
+| `client.passThrough.openai` / `.openaiPassthrough` | Raw HTTP only (use `client.chat.completions` etc. for typed OpenAI calls) |
+| `client.passThroughConfig` | Admin CRUD for *registering* custom passthrough endpoints (`/config/pass_through_endpoint*`) |
+| `client.mcp` | MCP servers, tools, toolsets, access groups, network, registry, user credentials, REST sub-resource |
 | `client.agents` | LiteLLM agents — list/create/update/patch/delete/daily-activity |
-| `client.a2a` | Agent-to-agent endpoints |
+| `client.a2a` | Agent-to-agent endpoints (JSON-RPC `message/send` + invoke) |
 
 ### Admin / operations
 
@@ -157,18 +171,27 @@ The client exposes every documented LiteLLM proxy endpoint group as a typed prop
 | `client.guardrails` | Guardrail CRUD, register, submissions, UI helpers, custom-code testing, usage analytics |
 | `client.credentials` | Credential CRUD |
 | `client.tags` | Tag CRUD and analytics |
-| `client.cache` | Cache delete/flush, ping, redis info, settings (get/update/test) |
+| `client.cache` | Cache delete/flush, ping (`/cache/ping`), redis info (`/cache/redis/info`), settings (get/update/test) |
 | `client.health` | `check()`, `liveness()`, `readiness()`, `services()`, `backlog()`, `license()`, `history()`, `latest()`, `sharedStatus()`, `testConnection()`, `test()`, `settings()` |
-| `client.compliance` | Compliance/audit endpoints |
-| `client.utils` | Utility endpoints |
+| `client.compliance` | Compliance/audit endpoints (`euAiAct`, `gdpr`) |
+| `client.utils` | `tokenCounter`, `transformRequest`, `supportedOpenAiParams`, `routes`, `availableRoutes` |
+| `client.memory` | KV store for conversation/context memory (`/v1/memory` CRUD) |
+| `client.fallbacks` | Model fallback config (`/fallback`, `/fallback/{model}` CRUD) |
+| `client.tools` | Cross-provider tool registry — `/v1/tool/*` (list, retrieve, detail, logs, policy CRUD) |
+| `client.routerSettings` | `getSettings()`, `getFields()` — router introspection |
+| `client.callbacks` | `list()`, `configs()` — callback config (read-only) |
+| `client.policies` | Policy management — full CRUD + `policies.{attachments, templates}` sub-resources, plus `resolve`, `validate`, `testCatalog` |
+| `client.jwt` | JWT-claim → virtual-key mapping CRUD |
+| `client.accessGroups` | Access group CRUD (top-level + `accessGroups.models` for model-scoped) |
+| `client.public` | Public/unauthed metadata endpoints — `modelHub`, `agentHub`, `mcpHub`, `skillHub`, `providers`, `litellmModelCostMap`, `litellmBlogPosts`, `endpoints` |
 
 ## Errors
 
-All HTTP errors are subclasses of `LiteLLMProxyError`:
+All HTTP errors are subclasses of `LiteLLMError`:
 
 ```ts
 import {
-  LiteLLMProxyError,
+  LiteLLMError,
   AuthenticationError,
   PermissionDeniedError,
   NotFoundError,
@@ -176,7 +199,7 @@ import {
   InternalServerError,
   ConnectionError,
   TimeoutError,
-} from 'litellm-proxy';
+} from 'litellm-client';
 
 try {
   await client.chat.completions.create({ /* … */ });
@@ -202,6 +225,34 @@ try {
 | `InternalServerError` | 500–599 |
 
 `ConnectionError` and `TimeoutError` cover network-level failures.
+
+### Provider-native error bodies
+
+`LiteLLMError.body` is typed as `LiteLLMErrorBody | null` — an OpenAI-shaped envelope that covers most cases. When a request is routed to a non-OpenAI provider, the proxy passes the upstream error through, and the body's actual shape is provider-specific. Cast `body` to a provider-native interface when you know which provider was hit:
+
+```ts
+import {
+  type AnthropicApiErrorBody,
+  type GeminiErrorBody,
+  type BedrockErrorBody,
+  type CohereErrorBody,
+  type MistralErrorBody,
+  RateLimitError,
+} from 'litellm-client';
+
+try {
+  await client.anthropic.messages.create({ /* … */ });
+} catch (err) {
+  if (err instanceof RateLimitError) {
+    const body = err.body as AnthropicApiErrorBody | null;
+    console.log(body?.error.type); // 'rate_limit_error' | 'overloaded_error' | …
+  }
+}
+```
+
+Available provider-native HTTP error bodies: `AnthropicApiErrorBody`, `GeminiErrorBody`, `BedrockErrorBody`, `CohereErrorBody`, `MistralErrorBody`. The convenience union `ProviderErrorBody` covers all of the above plus the default `LiteLLMErrorBody`.
+
+> The name `AnthropicApiErrorBody` is used (rather than `AnthropicErrorBody`) because the latter is already exported as the inline payload type of streaming `error` SSE events on `/v1/messages`.
 
 ## Retry behavior
 
@@ -379,7 +430,7 @@ import type {
   OpenAIModel,
   GeminiModel,
   MistralModel,
-} from 'litellm-proxy';
+} from 'litellm-client';
 
 // Typed — your IDE shows available models as you type
 const response = await client.chat.completions.create({
@@ -460,6 +511,146 @@ const settings = await client.cache.settings.get();
 console.log(`Cache type: ${settings.cache_type}`);
 ```
 
+### Prompts (templated prompt management)
+
+```ts
+const prompt = await client.prompts.create({
+  prompt_id: 'support-greeting',
+  prompt_template: 'Hello {{name}}, how can I help you today?',
+  metadata: { team: 'support' },
+});
+
+const all = await client.prompts.list();
+await client.prompts.update(prompt.prompt_id!, { prompt_template: 'Hi {{name}}!' });
+await client.prompts.delete(prompt.prompt_id!);
+
+// Discover which prompt-management integration the proxy is configured with
+const info = await client.prompts.integration();
+console.log(info.integration); // 'langfuse' | 'humanloop' | etc.
+```
+
+### Container files (code-interpreter sandboxes)
+
+```ts
+// Create a sandbox container, then upload + read files inside it
+const container = await client.containers.create({ name: 'session-1' });
+
+const upload = await client.containers.files.create(container.id, {
+  file: await fs.readFile('data.csv'),
+  filename: 'data.csv',
+  contentType: 'text/csv',
+});
+
+const files = await client.containers.files.list(container.id);
+const bytes = await client.containers.files.content(container.id, upload.id);
+console.log(`Got ${bytes.byteLength} bytes back`);
+
+await client.containers.files.delete(container.id, upload.id);
+```
+
+### Bedrock (typed Converse / Invoke / Knowledge Bases)
+
+```ts
+// Bedrock Converse — strongly typed; works with any model on Bedrock
+const result = await client.passThrough.bedrock.converse(
+  'anthropic.claude-3-haiku-20240307-v1:0',
+  {
+    messages: [{ role: 'user', content: [{ text: 'Hi!' }] }],
+    inferenceConfig: { maxTokens: 100, temperature: 0.7 },
+  },
+);
+console.log(result.output.message.content[0]); // { text: '...' }
+
+// Streaming variant — discriminated union of stream events
+const stream = await client.passThrough.bedrock.converseStream(
+  'anthropic.claude-3-haiku-20240307-v1:0',
+  { messages: [{ role: 'user', content: [{ text: 'Stream!' }] }] },
+);
+for await (const event of stream) {
+  if (event.contentBlockDelta) {
+    process.stdout.write(event.contentBlockDelta.delta.text ?? '');
+  }
+}
+
+// Knowledge bases — RAG retrieval against a Bedrock KB
+const docs = await client.passThrough.bedrock.knowledgeBases.retrieve(
+  'KB-XYZ',
+  { retrievalQuery: { text: 'How do I reset my password?' } },
+);
+
+// Guardrails — apply a Bedrock guardrail to text
+const guarded = await client.passThrough.bedrock.guardrails.apply(
+  'gr-abc',
+  'DRAFT',
+  { source: 'INPUT', content: [{ text: { text: 'sensitive content', qualifiers: [] } }] },
+);
+```
+
+### Cursor Cloud Agents
+
+```ts
+const me = await client.passThrough.cursor.me();
+const repos = await client.passThrough.cursor.repositories();
+
+// Launch an agent against a repo
+const agent = await client.passThrough.cursor.agents.launch({
+  prompt: { text: 'Refactor src/utils to use async/await' },
+  source: { repository: 'github.com/visgotti/my-repo', ref: 'main' },
+  target: { autoCreatePr: true },
+});
+
+const conversation = await client.passThrough.cursor.agents.conversation(agent.id);
+await client.passThrough.cursor.agents.followup(agent.id, {
+  prompt: { text: 'Also add tests for the new helpers' },
+});
+
+await client.passThrough.cursor.agents.stop(agent.id);
+```
+
+### Realtime events (typed discriminated union)
+
+The Realtime API is bidirectional WebSocket-based — clients connect directly to
+the URL the proxy returns. The SDK ships exhaustive types for all 38 documented
+event variants so you can narrow with `switch`:
+
+```ts
+import {
+  type RealtimeServerEvent,
+  type RealtimeClientEvent,
+} from 'litellm-client';
+
+const session = await client.realtime.createClientSecret({
+  session: { type: 'realtime', model: 'gpt-realtime' },
+});
+
+const ws = new WebSocket(session.value);
+
+ws.onmessage = (raw) => {
+  const event: RealtimeServerEvent = JSON.parse(raw.data);
+  switch (event.type) {
+    case 'session.created':
+      console.log('Session ready:', event.session.id);
+      break;
+    case 'response.audio.delta':
+      playAudioChunk(event.delta);
+      break;
+    case 'response.done':
+      console.log('Final response:', event.response);
+      break;
+    case 'error':
+      console.error(event.error.message);
+      break;
+  }
+};
+
+// Send a typed client event
+const update: RealtimeClientEvent = {
+  type: 'session.update',
+  session: { instructions: 'You are a friendly assistant.' },
+};
+ws.send(JSON.stringify(update));
+```
+
 ### Compliance and auditing
 
 ```ts
@@ -473,6 +664,42 @@ const logs = await client.compliance.logs({
   offset: 0,
 });
 ```
+
+## Migrating from Assistants to Responses
+
+OpenAI is sunsetting the Assistants API on **2026-08-26**. The SDK keeps `client.assistants.*` for back-compat (every method/type is now tagged `@deprecated`), but new code should use `client.responses` — the Responses API.
+
+Roughly:
+
+| Assistants concept | Responses equivalent |
+|---|---|
+| `assistants.create({ model, instructions, tools })` | Pass `model`, `instructions`, `tools` directly to `responses.create({ ... })` per call. No persistent assistant object needed. |
+| `threads.create()` + `threads.messages.create()` + `runs.create()` | One call: `responses.create({ model, input, previous_response_id })`. Pass the prior `response.id` to chain turns. |
+| `threads.messages.list(threadId)` | `responses.listInputItems(responseId)` |
+| `runs.cancel(threadId, runId)` | `responses.cancel(responseId)` |
+| `threads.delete(threadId)` | `responses.delete(responseId)` |
+| `tool_choice` / `response_format` on Run | Same fields on `responses.create({ tool_choice, response_format })` |
+| Streaming run events | `responses.create({ stream: true })` returning `Stream<ResponseStreamEvent>` |
+
+Minimal example:
+
+```ts
+// Old (Assistants — deprecated):
+const assistant = await client.assistants.create({ model: 'gpt-4o', instructions: 'You are helpful.' });
+const thread = await client.assistants.threads.create();
+await client.assistants.threads.messages.create(thread.id, { role: 'user', content: 'Hi' });
+const run = await client.assistants.threads.runs.create(thread.id, { assistant_id: assistant.id });
+
+// New (Responses):
+const r = await client.responses.create({
+  model: 'gpt-4o',
+  instructions: 'You are helpful.',
+  input: 'Hi',
+});
+console.log(r.output[0]); // assistant turn
+```
+
+For the full mapping see [OpenAI's official migration guide](https://platform.openai.com/docs/assistants/migration).
 
 ## Compatibility
 
@@ -496,9 +723,10 @@ npm run test:unit
 npm run build
 
 # E2E against a real LiteLLM proxy + live providers
-# Requires Docker and at least one of:
-#   OPENAI_API_KEY, ANTHROPIC_API_KEY, DEEPSEEK_API_KEY,
-#   GEMINI_API_KEY, ALIBABA_API_KEY
+# Requires Docker and at least one provider API key.
+# Copy the template, fill in whichever keys you have, then export them:
+cp .env.template .env
+set -a; source .env; set +a
 npm run test:e2e
 ```
 

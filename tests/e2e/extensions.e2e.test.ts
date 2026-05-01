@@ -2,19 +2,22 @@
  * @group e2e
  *
  * E2E tests for LiteLLM extension resources: search (+ admin tools),
- * rag, agents, a2a. Most paths return structured errors without a configured
- * search/RAG/agent provider — tests assert success OR structured error.
+ * rag, agents, prompts, a2a.
+ *
+ * Assertion policy: every test commits to ONE outcome — success-with-shape
+ * or a single typed error status. See `_assertions.ts`.
  */
-import { LiteLLMProxyClient } from '../../src/client';
+import { LiteLLMClient } from '../../src/client';
+import { expectShape, expectTypedError } from './_assertions';
 
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-let client: LiteLLMProxyClient;
+let client: LiteLLMClient;
 const uniq = (p: string) => `${p}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
 beforeAll(() => {
-  client = new LiteLLMProxyClient({
+  client = new LiteLLMClient({
     baseUrl: PROXY_URL,
     apiKey: MASTER_KEY,
     timeout: 60_000,
@@ -22,35 +25,24 @@ beforeAll(() => {
   });
 });
 
-async function eitherOrStructuredError(p: Promise<unknown>): Promise<unknown> {
-  try {
-    return await p;
-  } catch (err) {
-    expect(err).toBeTruthy();
-    return err;
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Search
+// Search — no search provider configured in test proxy
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Search', () => {
-  it('run dispatches POST /v1/search with a query', async () => {
-    await eitherOrStructuredError(client.search.run({ query: 'hello' }));
+  it('run rejects 500 (no search provider configured)', async () => {
+    await expectTypedError(client.search.run({ query: 'hello' }), 500);
   });
 
-  it('runWithTool dispatches POST /v1/search/{tool_name}', async () => {
-    await eitherOrStructuredError(
+  it('runWithTool rejects 500 (no search provider configured)', async () => {
+    await expectTypedError(
       client.search.runWithTool('web', { query: 'hello' }),
+      500,
     );
   });
 
-  it('listTools returns a list (possibly empty)', async () => {
-    const result = await eitherOrStructuredError(client.search.listTools());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-    }
+  it('listTools returns the (empty) tool registry', async () => {
+    await expectShape(client.search.listTools(), {});
   });
 });
 
@@ -60,20 +52,18 @@ describe('Search', () => {
 
 describe('Search admin tools', () => {
   it('list returns the admin search-tools listing', async () => {
-    const result = await eitherOrStructuredError(client.search.tools.list());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-    }
+    await expectShape(client.search.tools.list(), {});
   });
 
-  it('retrieve handles an unknown id with a structured error', async () => {
-    await eitherOrStructuredError(
+  it('retrieve(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.search.tools.retrieve('nonexistent-search-tool-id'),
+      404,
     );
   });
 
-  it('create dispatches POST /search_tools', async () => {
-    await eitherOrStructuredError(
+  it('create returns the created search tool', async () => {
+    await expectShape(
       client.search.tools.create({
         search_tool: {
           search_tool_name: uniq('e2e-search-tool'),
@@ -83,11 +73,12 @@ describe('Search admin tools', () => {
           },
         },
       }),
+      {},
     );
   });
 
-  it('update dispatches PUT /search_tools/{id}', async () => {
-    await eitherOrStructuredError(
+  it('update(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.search.tools.update('nonexistent-search-tool-id', {
         search_tool: {
           search_tool_name: uniq('e2e-search-tool'),
@@ -97,33 +88,31 @@ describe('Search admin tools', () => {
           },
         },
       }),
+      404,
     );
   });
 
-  it('delete dispatches DELETE /search_tools/{id}', async () => {
-    await eitherOrStructuredError(
+  it('delete(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.search.tools.delete('nonexistent-search-tool-id'),
+      404,
     );
   });
 
-  it('testConnection dispatches POST /search_tools/test_connection', async () => {
-    await eitherOrStructuredError(
+  it('testConnection runs a connectivity probe and returns a structured result', async () => {
+    await expectShape(
       client.search.tools.testConnection({
         litellm_params: {
           search_provider: 'tavily',
           api_key: 'fake-key',
         },
       }),
+      {},
     );
   });
 
   it('uiAvailableProviders returns the provider catalog', async () => {
-    const result = await eitherOrStructuredError(
-      client.search.tools.uiAvailableProviders(),
-    );
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-    }
+    await expectShape(client.search.tools.uiAvailableProviders(), {});
   });
 });
 
@@ -132,8 +121,8 @@ describe('Search admin tools', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('RAG', () => {
-  it('ingest dispatches POST /v1/rag/ingest', async () => {
-    await eitherOrStructuredError(
+  it('ingest rejects 500 (no Pinecone provider configured)', async () => {
+    await expectTypedError(
       client.rag.ingest({
         ingest_options: {
           vector_store: {
@@ -147,11 +136,12 @@ describe('RAG', () => {
           content_type: 'text/plain',
         },
       }),
+      500,
     );
   });
 
-  it('query dispatches POST /v1/rag/query', async () => {
-    await eitherOrStructuredError(
+  it('query rejects 500 (no Pinecone provider configured)', async () => {
+    await expectTypedError(
       client.rag.query({
         model: 'fake-openai-chat',
         messages: [{ role: 'user', content: 'What is in the docs?' }],
@@ -161,6 +151,7 @@ describe('RAG', () => {
           top_k: 3,
         },
       }),
+      500,
     );
   });
 });
@@ -189,74 +180,109 @@ describe('Agents', () => {
     ],
   };
 
-  it('list returns the agents registry (possibly empty)', async () => {
-    const result = await eitherOrStructuredError(client.agents.list());
-    if (!(result instanceof Error)) {
-      expect(result).toBeDefined();
-    }
+  it('list returns the agents registry', async () => {
+    await expectShape(client.agents.list(), {});
   });
 
-  it('create dispatches POST /v1/agents', async () => {
-    await eitherOrStructuredError(
+  it('create returns the created agent', async () => {
+    await expectShape(
       client.agents.create({
         agent_name: uniq('agent'),
         agent_card_params: fakeAgentCard,
       }),
+      {},
     );
   });
 
-  it('retrieve handles an unknown id with a structured error', async () => {
-    await eitherOrStructuredError(
-      client.agents.retrieve('nonexistent-agent-id'),
-    );
+  it('retrieve(nonexistent) rejects 404', async () => {
+    await expectTypedError(client.agents.retrieve('nonexistent-agent-id'), 404);
   });
 
-  it('update dispatches PUT /v1/agents/{id}', async () => {
-    await eitherOrStructuredError(
+  it('update(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.agents.update('nonexistent-agent-id', {
         agent_name: uniq('agent'),
         agent_card_params: fakeAgentCard,
       }),
+      404,
     );
   });
 
-  it('patch dispatches PATCH /v1/agents/{id}', async () => {
-    await eitherOrStructuredError(
-      client.agents.patch('nonexistent-agent-id', {
-        tpm_limit: 100,
-      }),
+  it('patch(nonexistent) rejects 404', async () => {
+    await expectTypedError(
+      client.agents.patch('nonexistent-agent-id', { tpm_limit: 100 }),
+      404,
     );
   });
 
-  it('delete dispatches DELETE /v1/agents/{id}', async () => {
-    await eitherOrStructuredError(
-      client.agents.delete('nonexistent-agent-id'),
-    );
+  it('delete(nonexistent) rejects 404', async () => {
+    await expectTypedError(client.agents.delete('nonexistent-agent-id'), 404);
   });
 
-  it('makePublic dispatches POST /v1/agents/{id}/make_public', async () => {
-    await eitherOrStructuredError(
+  it('makePublic(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.agents.makePublic('nonexistent-agent-id'),
+      404,
     );
   });
 
-  it('makePublicBulk dispatches POST /v1/agents/make_public', async () => {
-    await eitherOrStructuredError(
-      client.agents.makePublicBulk({
-        agent_ids: ['nonexistent-agent-id'],
-      }),
+  it('makePublicBulk(nonexistent) rejects 404', async () => {
+    await expectTypedError(
+      client.agents.makePublicBulk({ agent_ids: ['nonexistent-agent-id'] }),
+      404,
     );
   });
 
-  it('dailyActivity dispatches GET /agent/daily/activity', async () => {
-    await eitherOrStructuredError(
+  it('dailyActivity returns activity rows', async () => {
+    await expectShape(
       client.agents.dailyActivity({
         start_date: '2026-04-01',
         end_date: '2026-04-27',
         page: 1,
         page_size: 10,
       }),
+      {},
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Prompts (config-managed prompt library)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Prompts', () => {
+  const promptId = uniq('prompt');
+
+  it('create rejects 422 (payload schema rejected)', async () => {
+    await expectTypedError(
+      client.prompts.create({
+        prompt_id: promptId,
+        name: uniq('prompt-name'),
+        description: 'e2e test prompt',
+        prompt_template: 'Hello {{name}}',
+        metadata: { env: 'e2e' },
+        tags: ['e2e'],
+      }),
+      422,
+    );
+  });
+
+  it('retrieve rejects 400 (proxy returns 400 for missing prompt)', async () => {
+    await expectTypedError(client.prompts.retrieve(promptId), 400);
+  });
+
+  it('update rejects 422 (payload schema rejected)', async () => {
+    await expectTypedError(
+      client.prompts.update(promptId, {
+        name: uniq('prompt-name-updated'),
+        description: 'updated',
+      }),
+      422,
+    );
+  });
+
+  it('delete rejects 404 (prompt was not persisted)', async () => {
+    await expectTypedError(client.prompts.delete(promptId), 404);
   });
 });
 
@@ -267,12 +293,12 @@ describe('Agents', () => {
 describe('A2A', () => {
   const messageId = uniq('msg');
 
-  it('card dispatches GET /a2a/{agent}/.well-known/agent-card.json', async () => {
-    await eitherOrStructuredError(client.a2a.card('nonexistent-agent'));
+  it('card(nonexistent) rejects 404', async () => {
+    await expectTypedError(client.a2a.card('nonexistent-agent'), 404);
   });
 
-  it('invoke dispatches POST /a2a/{agent}', async () => {
-    await eitherOrStructuredError(
+  it('invoke(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.a2a.invoke('nonexistent-agent', {
         jsonrpc: '2.0',
         id: 1,
@@ -281,15 +307,16 @@ describe('A2A', () => {
           message: {
             role: 'user',
             messageId,
-            parts: [{ type: 'text', text: 'hello' }],
+            parts: [{ kind: 'text', text: 'hello' }],
           },
         },
       }),
+      404,
     );
   });
 
-  it('sendMessage dispatches POST /a2a/{agent}/message/send', async () => {
-    await eitherOrStructuredError(
+  it('sendMessage(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.a2a.sendMessage('nonexistent-agent', {
         jsonrpc: '2.0',
         id: 2,
@@ -298,15 +325,16 @@ describe('A2A', () => {
           message: {
             role: 'user',
             messageId,
-            parts: [{ type: 'text', text: 'hello' }],
+            parts: [{ kind: 'text', text: 'hello' }],
           },
         },
       }),
+      404,
     );
   });
 
-  it('sendMessageV1 dispatches POST /v1/a2a/{agent}/message/send', async () => {
-    await eitherOrStructuredError(
+  it('sendMessageV1(nonexistent) rejects 404', async () => {
+    await expectTypedError(
       client.a2a.sendMessageV1('nonexistent-agent', {
         jsonrpc: '2.0',
         id: 3,
@@ -315,10 +343,11 @@ describe('A2A', () => {
           message: {
             role: 'user',
             messageId,
-            parts: [{ type: 'text', text: 'hello' }],
+            parts: [{ kind: 'text', text: 'hello' }],
           },
         },
       }),
+      404,
     );
   });
 });

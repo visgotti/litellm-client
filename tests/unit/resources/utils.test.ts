@@ -66,12 +66,4 @@ describe('UtilsResource', () => {
     expect(calls[0].body).toBeUndefined();
   });
 
-  it('availableRoutes -> GET /utils/available_routes', async () => {
-    const { request, calls } = createMock({ routes: [] });
-    const res = new UtilsResource(request);
-    await res.availableRoutes();
-    expect(calls[0].method).toBe('GET');
-    expect(calls[0].path).toBe('/utils/available_routes');
-    expect(calls[0].body).toBeUndefined();
-  });
 });

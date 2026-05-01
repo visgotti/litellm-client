@@ -50,7 +50,14 @@ function withQuery(options: RequestOptions | undefined, extra: Query): RequestOp
 export class GuardrailsResource {
   constructor(private request: RequestFn) {}
 
-  /** GET /guardrails/list */
+  /**
+   * List configured guardrails (v1 schema).
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The list of guardrails.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   list(options?: RequestOptions): Promise<ListGuardrailsResponse> {
     return this.request<ListGuardrailsResponse>({
       method: 'GET',
@@ -59,7 +66,14 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /v2/guardrails/list */
+  /**
+   * List configured guardrails using the v2 schema.
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The list of guardrails (v2 shape).
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   listV2(options?: RequestOptions): Promise<ListGuardrailsResponse> {
     return this.request<ListGuardrailsResponse>({
       method: 'GET',
@@ -68,7 +82,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails */
+  /**
+   * Create a new guardrail configuration.
+   *
+   * @param params - The guardrail creation payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The persisted guardrail record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   create(
     params: GuardrailCreateParams,
     options?: RequestOptions,
@@ -81,7 +103,16 @@ export class GuardrailsResource {
     });
   }
 
-  /** PUT /guardrails/{id} */
+  /**
+   * Replace a guardrail's configuration (full update).
+   *
+   * @param id - The guardrail identifier.
+   * @param params - The full replacement payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated guardrail record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   update(
     id: string,
     params: GuardrailUpdateParams,
@@ -95,7 +126,16 @@ export class GuardrailsResource {
     });
   }
 
-  /** PATCH /guardrails/{id} */
+  /**
+   * Partially update a guardrail's configuration.
+   *
+   * @param id - The guardrail identifier.
+   * @param params - A partial update payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The updated guardrail record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   patch(
     id: string,
     params: GuardrailPatchParams,
@@ -109,7 +149,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** DELETE /guardrails/{id} */
+  /**
+   * Delete a guardrail by id.
+   *
+   * @param id - The guardrail identifier to remove.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A deletion confirmation payload.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   delete(id: string, options?: RequestOptions): Promise<GuardrailDeleteResponse> {
     return this.request<GuardrailDeleteResponse>({
       method: 'DELETE',
@@ -118,7 +166,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/{id} */
+  /**
+   * Retrieve a single guardrail by id.
+   *
+   * @param id - The guardrail identifier.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The guardrail record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   retrieve(id: string, options?: RequestOptions): Promise<GuardrailInfoResponse> {
     return this.request<GuardrailInfoResponse>({
       method: 'GET',
@@ -127,7 +183,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/{id}/info — alias of {@link retrieve}. */
+  /**
+   * Retrieve guardrail info via the `/info` alias of {@link retrieve}.
+   *
+   * @param id - The guardrail identifier.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The guardrail record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   info(id: string, options?: RequestOptions): Promise<GuardrailInfoResponse> {
     return this.request<GuardrailInfoResponse>({
       method: 'GET',
@@ -136,7 +200,17 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails/register */
+  /**
+   * Submit a guardrail for registration via the team submission flow.
+   *
+   * Unlike {@link create}, this enqueues the guardrail for an admin approval step.
+   *
+   * @param params - The guardrail registration payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The pending registration record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   register(
     params: GuardrailRegisterParams,
     options?: RequestOptions,
@@ -149,7 +223,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/submissions */
+  /**
+   * List guardrail submissions awaiting admin review.
+   *
+   * @param params - Optional submission filters forwarded as query string entries.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The submissions listing.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   listSubmissions(
     params: ListGuardrailSubmissionsParams = {},
     options?: RequestOptions,
@@ -161,7 +243,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/submissions/{id} */
+  /**
+   * Retrieve a single guardrail submission by id.
+   *
+   * @param id - The submission identifier.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The submission record.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   retrieveSubmission(
     id: string,
     options?: RequestOptions,
@@ -173,7 +263,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails/submissions/{id}/approve */
+  /**
+   * Approve a guardrail submission, promoting it to an active guardrail.
+   *
+   * @param id - The submission identifier to approve.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The submission action result.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   approveSubmission(
     id: string,
     options?: RequestOptions,
@@ -185,7 +283,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails/submissions/{id}/reject */
+  /**
+   * Reject a pending guardrail submission.
+   *
+   * @param id - The submission identifier to reject.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The submission action result.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   rejectSubmission(
     id: string,
     options?: RequestOptions,
@@ -197,7 +303,14 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/ui/add_guardrail_settings */
+  /**
+   * Fetch the settings schema used by the admin UI when adding a new guardrail.
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The UI add-guardrail settings payload.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   uiSettings(options?: RequestOptions): Promise<GuardrailUIAddSettingsResponse> {
     return this.request<GuardrailUIAddSettingsResponse>({
       method: 'GET',
@@ -206,7 +319,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/ui/category_yaml/{category} */
+  /**
+   * Fetch the YAML template the UI uses for a given guardrail category.
+   *
+   * @param category - The guardrail category whose template should be loaded.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The category YAML payload.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   uiCategoryYaml(
     category: string,
     options?: RequestOptions,
@@ -218,7 +339,14 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/ui/major_airlines */
+  /**
+   * Fetch the major-airlines list used by the airline-related guardrail UI.
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The list of major airline entries.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   uiMajorAirlines(options?: RequestOptions): Promise<GuardrailUIMajorAirlinesResponse> {
     return this.request<GuardrailUIMajorAirlinesResponse>({
       method: 'GET',
@@ -227,7 +355,14 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/ui/provider_specific_params */
+  /**
+   * Fetch the provider-specific parameter schema used by the guardrail admin UI.
+   *
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The provider-specific parameter schema.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   uiProviderSpecificParams(
     options?: RequestOptions,
   ): Promise<GuardrailUIProviderSpecificParamsResponse> {
@@ -238,7 +373,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails/validate_blocked_words_file */
+  /**
+   * Validate a blocked-words file payload before saving it on a guardrail.
+   *
+   * @param params - The blocked-words validation payload.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns Validation results, including any malformed entries.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   validateBlockedWordsFile(
     params: ValidateBlockedWordsFileParams,
     options?: RequestOptions,
@@ -251,7 +394,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** POST /guardrails/test_custom_code */
+  /**
+   * Test a custom-code guardrail snippet against a sample payload.
+   *
+   * @param params - The custom-code test request (code + sample inputs).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The execution result, including stdout/stderr and verdict.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   testCustomCode(
     params: TestCustomCodeParams,
     options?: RequestOptions,
@@ -265,10 +416,16 @@ export class GuardrailsResource {
   }
 
   /**
-   * POST /guardrails/apply_guardrail
+   * Apply a guardrail to a piece of text/content and return its verdict.
    *
    * The proxy also exposes this under the legacy alias `/apply_guardrail`;
    * this method targets the canonical `/guardrails/apply_guardrail` path.
+   *
+   * @param params - The guardrail-apply payload (target guardrail, content, mode).
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The guardrail verdict and any sanitized content.
+   *
+   * @see https://docs.litellm.ai/docs/apply_guardrail
    */
   apply(
     params: ApplyGuardrailParams,
@@ -282,7 +439,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/usage/overview */
+  /**
+   * Fetch a high-level usage overview across all guardrails.
+   *
+   * @param params - Optional date-range and grouping filters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The aggregated guardrail usage overview.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   usageOverview(
     params: UsageOverviewParams = {},
     options?: RequestOptions,
@@ -294,7 +459,16 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/usage/detail/{id} */
+  /**
+   * Fetch detailed usage stats for a single guardrail.
+   *
+   * @param id - The guardrail identifier whose usage to inspect.
+   * @param params - Optional date-range and grouping filters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The detailed usage payload.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   usageDetail(
     id: string,
     params: UsageDetailParams = {},
@@ -307,7 +481,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /guardrails/usage/logs */
+  /**
+   * Fetch a stream of recent guardrail invocation logs.
+   *
+   * @param params - Optional pagination and filter parameters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns A page of guardrail invocation logs.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   usageLogs(
     params: UsageLogsParams = {},
     options?: RequestOptions,
@@ -319,7 +501,15 @@ export class GuardrailsResource {
     });
   }
 
-  /** GET /policies/usage/overview */
+  /**
+   * Fetch a usage overview rolled up by policy (rather than guardrail id).
+   *
+   * @param params - Optional date-range and grouping filters.
+   * @param options - Per-request override for `timeout`, `headers`, `signal`, etc.
+   * @returns The policy-level usage overview.
+   *
+   * @see https://docs.litellm.ai/docs/proxy/guardrails
+   */
   policiesUsageOverview(
     params: UsageOverviewParams = {},
     options?: RequestOptions,

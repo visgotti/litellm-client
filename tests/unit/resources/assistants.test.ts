@@ -39,28 +39,16 @@ describe('AssistantsResource', () => {
     expect(request.mock.calls[1][0].path).toBe('/v1/assistants');
   });
 
-  it('retrieve() / update() / delete() encode id', async () => {
-    await assistants.retrieve('asst a');
-    expect(request.mock.calls[0][0]).toMatchObject({
-      method: 'GET',
-      path: `/v1/assistants/${encodeURIComponent('asst a')}`,
-    });
-    expectBetaHeader(0);
-
-    await assistants.update('asst_1', { name: 'new' } as any);
-    expect(request.mock.calls[1][0]).toMatchObject({
-      method: 'POST',
-      path: '/v1/assistants/asst_1',
-    });
-
+  it('delete() encodes id', async () => {
     await assistants.delete('asst_1');
-    expect(request.mock.calls[2][0]).toMatchObject({
+    expect(request.mock.calls[0][0]).toMatchObject({
       method: 'DELETE',
       path: '/v1/assistants/asst_1',
     });
+    expectBetaHeader(0);
   });
 
-  it('threads.create() / retrieve() / update() / delete()', async () => {
+  it('threads.create() / retrieve()', async () => {
     await assistants.threads.create({ messages: [] } as any);
     expect(request.mock.calls[0][0]).toMatchObject({
       method: 'POST',
@@ -74,18 +62,6 @@ describe('AssistantsResource', () => {
     await assistants.threads.retrieve('th_1');
     expect(request.mock.calls[2][0]).toMatchObject({
       method: 'GET',
-      path: '/v1/threads/th_1',
-    });
-
-    await assistants.threads.update('th_1', { metadata: {} } as any);
-    expect(request.mock.calls[3][0]).toMatchObject({
-      method: 'POST',
-      path: '/v1/threads/th_1',
-    });
-
-    await assistants.threads.delete('th_1');
-    expect(request.mock.calls[4][0]).toMatchObject({
-      method: 'DELETE',
       path: '/v1/threads/th_1',
     });
   });
@@ -113,24 +89,13 @@ describe('AssistantsResource', () => {
     expect(request.mock.calls[2][0].path).toBe('/v1/threads/th_1/messages');
   });
 
-  it('threads.runs.create() / retrieve() / cancel()', async () => {
+  it('threads.runs.create()', async () => {
     await assistants.threads.runs.create('th_1', { assistant_id: 'asst_1' } as any);
     expect(request.mock.calls[0][0]).toMatchObject({
       method: 'POST',
       path: '/v1/threads/th_1/runs',
     });
-
-    await assistants.threads.runs.retrieve('th_1', 'run_1');
-    expect(request.mock.calls[1][0]).toMatchObject({
-      method: 'GET',
-      path: '/v1/threads/th_1/runs/run_1',
-    });
-
-    await assistants.threads.runs.cancel('th_1', 'run_1');
-    expect(request.mock.calls[2][0]).toMatchObject({
-      method: 'POST',
-      path: '/v1/threads/th_1/runs/run_1/cancel',
-    });
+    expectBetaHeader(0);
   });
 
   it('preserves caller-supplied headers alongside beta header', async () => {

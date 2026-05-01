@@ -137,4 +137,58 @@ describe('TagsResource', () => {
     expect(arg.path).toBe('/tag/user-agent/per-user-analytics');
     expect(arg.options.query).toEqual({ tag_filter: 'curl', page: 1, page_size: 50 });
   });
+
+  it('userAgentPerUserAnalytics joins tag_filters array', async () => {
+    await r.userAgentPerUserAnalytics({ tag_filters: ['x', 'y'] });
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/tag/user-agent/per-user-analytics');
+    expect(arg.options.query).toEqual({ tag_filters: 'x,y' });
+  });
+
+  it('userAgentPerUserAnalytics works with no params (default {})', async () => {
+    await r.userAgentPerUserAnalytics();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/tag/user-agent/per-user-analytics');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('dailyActivity works with no params (default {})', async () => {
+    await r.dailyActivity();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/tag/daily/activity');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('dau works with no params (default {})', async () => {
+    await r.dau();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/tag/dau');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('wau works with no params (default {})', async () => {
+    await r.wau();
+    const arg = request.mock.calls[0][0];
+    expect(arg.method).toBe('GET');
+    expect(arg.path).toBe('/tag/wau');
+    expect(arg.options.query).toEqual({});
+  });
+
+  it('summary includes tag_filter when defined', async () => {
+    await r.summary({
+      start_date: '2024-01-01',
+      end_date: '2024-01-31',
+      tag_filter: 'curl',
+    });
+    const arg = request.mock.calls[0][0];
+    expect(arg.options.query).toEqual({
+      start_date: '2024-01-01',
+      end_date: '2024-01-31',
+      tag_filter: 'curl',
+    });
+  });
 });

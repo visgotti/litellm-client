@@ -33,19 +33,19 @@ describe('CacheResource', () => {
     expect(calls[0].body).toBeUndefined();
   });
 
-  it('ping -> GET /ping', async () => {
+  it('ping -> GET /cache/ping', async () => {
     const { request, calls } = createMock({ status: 'healthy' });
     await new CacheResource(request).ping();
     expect(calls[0].method).toBe('GET');
-    expect(calls[0].path).toBe('/ping');
+    expect(calls[0].path).toBe('/cache/ping');
     expect(calls[0].body).toBeUndefined();
   });
 
-  it('redisInfo -> GET /redis/info', async () => {
+  it('redisInfo -> GET /cache/redis/info', async () => {
     const { request, calls } = createMock({ redis_version: '7.0.0' });
     await new CacheResource(request).redisInfo();
     expect(calls[0].method).toBe('GET');
-    expect(calls[0].path).toBe('/redis/info');
+    expect(calls[0].path).toBe('/cache/redis/info');
   });
 
   it('settings.get -> GET /cache/settings', async () => {
