@@ -25,6 +25,8 @@ const has = (n: string) => Boolean(process.env[n] && process.env[n]!.trim().leng
 const HAS_ANTHROPIC = has('ANTHROPIC_API_KEY');
 const HAS_GEMINI = has('GEMINI_API_KEY');
 const HAS_OPENAI = has('OPENAI_API_KEY');
+const itAnthropic = HAS_ANTHROPIC ? it : it.skip;
+const itGemini = HAS_GEMINI ? it : it.skip;
 
 let client: LiteLLMClient;
 beforeAll(() => {
@@ -98,24 +100,18 @@ describe('Anthropic native: messages', () => {
     expect(events[events.length - 1].type).toBe('message_stop');
   });
 
-  it('messages.countTokens returns input_tokens', async () => {
-    const p = client.anthropic.messages.countTokens({
+  itAnthropic('messages.countTokens returns input_tokens', async () => {
+    const r = await client.anthropic.messages.countTokens({
       model: 'claude-haiku-4-5',
       messages: [{ role: 'user', content: 'pong' }],
     });
-
-    if (HAS_ANTHROPIC) {
-      const r = await p;
-      expect(typeof r.input_tokens).toBe('number');
-      expect(r.input_tokens).toBeGreaterThan(0);
-    } else {
-      await expectTypedError(p, 401);
-    }
+    expect(typeof r.input_tokens).toBe('number');
+    expect(r.input_tokens).toBeGreaterThan(0);
   });
 });
 
 describe('Anthropic native: skills', () => {
-  it('skills.list returns the skills registry', async () => {
+  itAnthropic('skills.list returns the skills registry', async () => {
     await expectShape(client.anthropic.skills.list(), {});
   });
 
@@ -151,34 +147,18 @@ describe('Anthropic native: skills', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Gemini native: generateContent', () => {
-  it('generateContent returns text', async () => {
-    const p = client.gemini.generateContent('gemini-2.5-flash-lite', {
+  itGemini('generateContent returns text', async () => {
+    const res = (await client.gemini.generateContent('gemini-2.5-flash-lite', {
       contents: [{ role: 'user', parts: [{ text: 'pong' }] }],
-    });
-
-    if (HAS_GEMINI) {
-      const res = (await p) as GenerateContentResponse;
-      expect(Array.isArray(res.candidates)).toBe(true);
-      expect((res.candidates ?? []).length).toBeGreaterThan(0);
-      const first = (res.candidates ?? [])[0];
-      expect(first.content).toBeDefined();
-      expect(Array.isArray(first.content?.parts)).toBe(true);
-    } else {
-      await expectTypedError(p, 401);
-    }
+    })) as GenerateContentResponse;
+    expect(Array.isArray(res.candidates)).toBe(true);
+    expect((res.candidates ?? []).length).toBeGreaterThan(0);
+    const first = (res.candidates ?? [])[0];
+    expect(first.content).toBeDefined();
+    expect(Array.isArray(first.content?.parts)).toBe(true);
   });
 
-  it('streamGenerateContent returns a Stream and yields chunks', async () => {
-    if (!HAS_GEMINI) {
-      await expectTypedError(
-        client.gemini.streamGenerateContent('gemini-2.5-flash-lite', {
-          contents: [{ role: 'user', parts: [{ text: 'pong' }] }],
-        }),
-        401,
-      );
-      return;
-    }
-
+  itGemini('streamGenerateContent returns a Stream and yields chunks', async () => {
     const stream = await client.gemini.streamGenerateContent('gemini-2.5-flash-lite', {
       contents: [{ role: 'user', parts: [{ text: 'Count: 1, 2, 3.' }] }],
     });
@@ -193,23 +173,17 @@ describe('Gemini native: generateContent', () => {
     expect(withCandidates).toBeDefined();
   });
 
-  it('countTokens returns totalTokens', async () => {
-    const p = client.gemini.countTokens('gemini-2.5-flash-lite', {
+  itGemini('countTokens returns totalTokens', async () => {
+    const r = await client.gemini.countTokens('gemini-2.5-flash-lite', {
       contents: [{ role: 'user', parts: [{ text: 'pong' }] }],
     });
-
-    if (HAS_GEMINI) {
-      const r = await p;
-      expect(typeof r.totalTokens).toBe('number');
-      expect(r.totalTokens).toBeGreaterThan(0);
-    } else {
-      await expectTypedError(p, 401);
-    }
+    expect(typeof r.totalTokens).toBe('number');
+    expect(r.totalTokens).toBeGreaterThan(0);
   });
 });
 
 describe('Gemini native: interactions', () => {
-  it('interactions.create succeeds', async () => {
+  itGemini('interactions.create succeeds', async () => {
     await expectShape(
       client.gemini.interactions.create({
         model: 'gemini-2.5-flash-lite',
@@ -219,7 +193,7 @@ describe('Gemini native: interactions', () => {
     );
   });
 
-  it('interactions.retrieve returns 200 with an error envelope (proxy bug — should 404)', async () => {
+  itGemini('interactions.retrieve returns 200 with an error envelope (proxy bug — should 404)', async () => {
     const r = (await client.gemini.interactions.retrieve(
       'nonexistent-interaction-id',
     )) as { error?: { message?: string } };
