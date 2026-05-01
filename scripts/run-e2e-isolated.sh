@@ -82,7 +82,11 @@ for file in "${FILES[@]}"; do
     node -e "
       const r = require('$out');
       for (const tr of r.testResults) for (const t of tr.assertionResults) {
-        if (t.status === 'failed') console.log('    -', t.fullName.slice(0, 80));
+        if (t.status !== 'failed') continue;
+        console.log('    ✗', t.fullName);
+        for (const m of (t.failureMessages || [])) {
+          for (const line of m.split('\n').slice(0, 8)) console.log('      ', line);
+        }
       }
     "
   else
