@@ -21,10 +21,6 @@ import { Stream } from '../../src/streaming';
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-const has = (n: string) => Boolean(process.env[n] && process.env[n]!.trim().length > 0);
-const HAS_OPENAI = has('OPENAI_API_KEY');
-const itOpenAI = HAS_OPENAI ? it : it.skip;
-
 let client: LiteLLMClient;
 
 beforeAll(() => {
@@ -68,7 +64,7 @@ describe('Misc — read-only endpoints (200 OK)', () => {
 });
 
 describe('Misc — streaming usage assistant', () => {
-  itOpenAI('usageAiChat() returns a typed Stream of SSE chunks', async () => {
+  it('usageAiChat() returns a typed Stream of SSE chunks', async () => {
     const stream = await client.misc.usageAiChat({
       messages: [{ role: 'user', content: 'hello' }],
     });

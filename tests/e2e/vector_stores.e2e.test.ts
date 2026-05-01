@@ -21,10 +21,6 @@ import { expectShape, expectTypedError } from './_assertions';
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-const has = (n: string) => Boolean(process.env[n] && process.env[n]!.trim().length > 0);
-const HAS_OPENAI = has('OPENAI_API_KEY');
-const itOpenAI = HAS_OPENAI ? it : it.skip;
-
 let client: LiteLLMClient;
 const uniq = (p: string) => `${p}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
@@ -42,7 +38,7 @@ beforeAll(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('VectorStores (OpenAI-shape)', () => {
-  itOpenAI('create returns a new vector store with a vs_-prefixed id', async () => {
+  it('create returns a new vector store with a vs_-prefixed id', async () => {
     const r = await expectShape(client.vectorStores.create({ name: uniq('vs') }), {
       object: 'vector_store',
     });
@@ -95,7 +91,7 @@ describe('VectorStores.files (nested)', () => {
     );
   });
 
-  itOpenAI('list returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
+  it('list returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
     const r = (await client.vectorStores.files.list('vs_fake')) as {
       error?: { type?: string; param?: string };
     };
@@ -105,7 +101,7 @@ describe('VectorStores.files (nested)', () => {
     });
   });
 
-  itOpenAI('retrieve returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
+  it('retrieve returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
     const r = (await client.vectorStores.files.retrieve('vs_fake', 'file_fake')) as {
       error?: { type?: string; param?: string };
     };
@@ -115,7 +111,7 @@ describe('VectorStores.files (nested)', () => {
     });
   });
 
-  itOpenAI('content returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
+  it('content returns 200 with an error envelope for unknown parent vs (proxy bug)', async () => {
     const r = (await client.vectorStores.files.content('vs_fake', 'file_fake')) as {
       error?: { type?: string; param?: string };
     };

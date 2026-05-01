@@ -19,10 +19,6 @@ import { expectShape, expectTypedError } from './_assertions';
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-const has = (n: string) => Boolean(process.env[n] && process.env[n]!.trim().length > 0);
-const HAS_OPENAI = has('OPENAI_API_KEY');
-const itOpenAI = HAS_OPENAI ? it : it.skip;
-
 let client: LiteLLMClient;
 const uniq = (p: string) => `${p}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
@@ -40,14 +36,14 @@ beforeAll(() => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Containers', () => {
-  itOpenAI('create returns a container with a cntr_-prefixed id', async () => {
+  it('create returns a container with a cntr_-prefixed id', async () => {
     const r = await client.containers.create({ name: uniq('container') });
     expect(r).toMatchObject({ object: 'container' });
     expect(typeof (r as { id: string }).id).toBe('string');
     expect((r as { id: string }).id.startsWith('cntr_')).toBe(true);
   });
 
-  itOpenAI('list returns the OpenAI list envelope', async () => {
+  it('list returns the OpenAI list envelope', async () => {
     const r = await client.containers.list();
     expect(r).toMatchObject({ object: 'list' });
     expect(Array.isArray((r as { data: unknown[] }).data)).toBe(true);
@@ -85,7 +81,7 @@ describe('Evals', () => {
     );
   });
 
-  itOpenAI('list returns a paginated list of evals', async () => {
+  it('list returns a paginated list of evals', async () => {
     await expectShape(client.evals.list({ limit: 10 }), {});
   });
 
@@ -161,7 +157,7 @@ describe('Evals.runs', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Realtime', () => {
-  itOpenAI('createClientSecret returns a real session secret', async () => {
+  it('createClientSecret returns a real session secret', async () => {
     const r = await client.realtime.createClientSecret({
       session: {
         type: 'realtime',
@@ -233,7 +229,7 @@ describe('Containers.files', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Realtime (smoke)', () => {
-  itOpenAI('createClientSecret with minimal session returns a real session secret', async () => {
+  it('createClientSecret with minimal session returns a real session secret', async () => {
     const r = await client.realtime.createClientSecret({
       session: { type: 'realtime', model: 'gpt-realtime' },
     });

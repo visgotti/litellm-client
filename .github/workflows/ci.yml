@@ -85,11 +85,11 @@ jobs:
 
     env:
       LITELLM_E2E_PROVIDER: ${{ matrix.provider }}
-      OPENAI_API_KEY:    ${{ matrix.provider == 'openai'    && secrets.OPENAI_API_KEY    || '' }}
-      ANTHROPIC_API_KEY: ${{ matrix.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
-      DEEPSEEK_API_KEY:  ${{ matrix.provider == 'deepseek'  && secrets.DEEPSEEK_API_KEY  || '' }}
-      GEMINI_API_KEY:    ${{ matrix.provider == 'gemini'    && secrets.GEMINI_API_KEY    || '' }}
-      ALIBABA_API_KEY:   ${{ matrix.provider == 'alibaba'   && secrets.ALIBABA_API_KEY   || '' }}
+      OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
+      GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+      ALIBABA_API_KEY:   ${{ secrets.ALIBABA_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4

@@ -15,10 +15,6 @@ import { expectShape, expectTypedError } from './_assertions';
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
-const has = (n: string) => Boolean(process.env[n] && process.env[n]!.trim().length > 0);
-const HAS_GEMINI = has('GEMINI_API_KEY');
-const itGemini = HAS_GEMINI ? it : it.skip;
-
 let client: LiteLLMClient;
 
 beforeAll(() => {
@@ -82,7 +78,7 @@ describe('InteractionsResource', () => {
   // ids on bare `/interactions/{id}` rather than rejecting with a typed
   // status. Assert the error envelope shape so a future status fix surfaces
   // as a red test.
-  itGemini('retrieve(unknown id) returns a 200 envelope with an error field', async () => {
+  it('retrieve(unknown id) returns a 200 envelope with an error field', async () => {
     const r = (await client.interactions.retrieve('nonexistent-id')) as {
       error?: { message?: string };
     };
