@@ -33,6 +33,12 @@ import type { ChatCompletionChunk } from '../../src/types/chat';
 import type { ResponseStreamEvent } from '../../src/types/responses';
 import { expectShape, expectTypedError } from './_assertions';
 
+// Live-provider tests round-trip real upstream APIs; transient 5xx / rate
+// limits / streaming hiccups are inherent to that. Retry up to 2x so a flaky
+// upstream call doesn't fail the whole CI run, while genuine bugs still
+// surface after 3 attempts.
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 

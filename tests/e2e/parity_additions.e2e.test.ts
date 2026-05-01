@@ -12,6 +12,10 @@
 import { LiteLLMClient } from '../../src/client';
 import { expectShape, expectTypedError } from './_assertions';
 
+// Some endpoints here (interactions, gemini global actions) round-trip live
+// upstream APIs — retry transient flake.
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 

@@ -18,6 +18,9 @@ import {
 } from '../../src/errors';
 import { Stream } from '../../src/streaming';
 
+// usageAiChat is OpenAI-backed and streaming — retry transient flake.
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 

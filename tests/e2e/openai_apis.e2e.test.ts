@@ -16,6 +16,11 @@
 import { LiteLLMClient } from '../../src/client';
 import { expectShape, expectTypedError } from './_assertions';
 
+// Containers / realtime tests round-trip real OpenAI endpoints; transient
+// 5xx surfaces here (saw `Containers list -> Internal server error` in CI).
+// Retry transient flake — genuine failures still surface after 3 attempts.
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 

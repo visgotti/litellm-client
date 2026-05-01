@@ -18,6 +18,10 @@ import type {
 import type { GenerateContentResponse } from '../../src/types/gemini';
 import { expectShape, expectTypedError } from './_assertions';
 
+// Anthropic / Gemini native tests round-trip real upstream APIs — retry
+// transient 5xx / streaming flakes; genuine failures surface after 3 attempts.
+jest.retryTimes(2, { logErrorsBeforeRetry: true });
+
 const PROXY_URL = process.env.LITELLM_PROXY_URL ?? 'http://localhost:14000';
 const MASTER_KEY = process.env.LITELLM_MASTER_KEY ?? 'sk-e2e-test-master-key';
 
