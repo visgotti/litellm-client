@@ -71,14 +71,10 @@ jobs:
   # Runs the full LiteLLM proxy round-trip against a single live provider per
   # matrix leg. All 5 legs run concurrently. Each leg fails hard if its own
   # *_API_KEY is missing — there's no silent skip.
-  #
-  # Only fires after `build` succeeds, and only on push to `main` or manual
-  # dispatch — never on PRs — so secrets are never exposed to forks.
   e2e:
     name: e2e (${{ matrix.provider }})
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 25
     environment: live
 
