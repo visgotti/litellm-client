@@ -1281,8 +1281,7 @@ describe('Live providers (registry)', () => {
   });
 });
 
-const dOpenAI = HAS_OPENAI ? describe : describe.skip;
-dOpenAI('Live: OpenAI', () => {
+describe('Live: OpenAI', () => {
   it('chat: non-streaming', () => expectBasicChat('live-openai-chat'));
   it('chat: streaming', () => expectStreamingChat('live-openai-chat'));
 
@@ -1359,20 +1358,17 @@ dOpenAI('Live: OpenAI', () => {
   });
 });
 
-const dAnthropic = HAS_ANTHROPIC ? describe : describe.skip;
-dAnthropic('Live: Anthropic', () => {
+describe('Live: Anthropic', () => {
   it('chat: non-streaming', () => expectBasicChat('live-anthropic-chat'));
   it('chat: streaming', () => expectStreamingChat('live-anthropic-chat'));
 });
 
-const dDeepSeek = HAS_DEEPSEEK ? describe : describe.skip;
-dDeepSeek('Live: DeepSeek', () => {
+describe('Live: DeepSeek', () => {
   it('chat: non-streaming', () => expectBasicChat('live-deepseek-chat'));
   it('chat: streaming', () => expectStreamingChat('live-deepseek-chat'));
 });
 
-const dGemini = HAS_GEMINI ? describe : describe.skip;
-dGemini('Live: Gemini', () => {
+describe('Live: Gemini', () => {
   it('chat: non-streaming', () => expectBasicChat('live-gemini-chat'));
   it('chat: streaming', () => expectStreamingChat('live-gemini-chat'));
 
@@ -1386,8 +1382,7 @@ dGemini('Live: Gemini', () => {
   });
 });
 
-const dAlibaba = HAS_ALIBABA ? describe : describe.skip;
-dAlibaba('Live: Alibaba (Qwen)', () => {
+describe('Live: Alibaba (Qwen)', () => {
   it('chat: non-streaming', () => expectBasicChat('live-alibaba-chat'));
   it('chat: streaming', () => expectStreamingChat('live-alibaba-chat'));
 
