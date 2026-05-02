@@ -1,7 +1,7 @@
 # litellm-client
 
 [![CI](https://github.com/visgotti/litellm-client/actions/workflows/ci.yml/badge.svg)](https://github.com/visgotti/litellm-client/actions/workflows/ci.yml)
-[![Codecov](https://codecov.io/gh/visgotti/litellm-client/branch/main/graph/badge.svg)](https://codecov.io/gh/visgotti/litellm-client)
+[![codecov](https://codecov.io/gh/visgotti/litellm-client/graph/badge.svg?token=U7KS3N0NQ7)](https://codecov.io/gh/visgotti/litellm-client)
 [![npm](https://img.shields.io/npm/v/litellm-client.svg)](https://www.npmjs.com/package/litellm-client)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
