@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -124,3 +126,49 @@ jobs:
             -f tests/e2e/docker-compose.yml \
             -p litellm-client-e2e \
             down -v --remove-orphans || true
+
+  # ───────────────────── publish (push to main only) ───────────
+  # Fires after every CI gate passes on a push to main. Skips silently
+  # if package.json version is already on npm — bump the version to
+  # ship a release.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, build, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Check if version is already published
+        id: version_check
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view litellm-client version 2>/dev/null || echo "")
+          echo "pkg_version=$PKG_VERSION"     >> "$GITHUB_OUTPUT"
+          echo "published=$PUBLISHED"         >> "$GITHUB_OUTPUT"
+          if [ "$PKG_VERSION" = "$PUBLISHED" ]; then
+            echo "skip=true"  >> "$GITHUB_OUTPUT"
+            echo "::notice title=Publish skipped::version $PKG_VERSION already on npm"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm ci
+        if: steps.version_check.outputs.skip == 'false'
+
+      - run: npm run build
+        if: steps.version_check.outputs.skip == 'false'
+
+      - name: Publish to npm
+        if: steps.version_check.outputs.skip == 'false'
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
